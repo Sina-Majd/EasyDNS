@@ -10,7 +10,7 @@ EasyDNS is a lightweight Windows desktop utility for configuring network adapter
 - **Custom DNS Profiles**: Add, save, and manage custom IPv4 primary and secondary DNS server pairs.
 - **Latency Benchmarking**: Measure response times across all resolvers in parallel to identify the fastest DNS server for your network.
 - **DNS Cache Flushing**: Flush the Windows DNS resolver cache directly via native Windows APIs and `ipconfig`.
-- **DHCP Restoration**: Restore network adapter DNS settings to automatic (DHCP) with one click.
+- **Default Restoration**: Restore network adapter DNS settings to default (automatic) with one click.
 - **Adapter Detection**: Automatically detects active physical and wireless network adapters.
 
 ## System Requirements
