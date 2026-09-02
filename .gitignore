@@ -1,0 +1,40 @@
+## Visual Studio & Build Outputs
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+build/
+dist/
+
+## User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+## Visual Studio workspace & cache files
+.vs/
+.vscode/
+.idea/
+*.launch
+*.opendb
+*.VC.db
+*.VC.opendb
+
+## Build and debug logs
+*.log
+*.tlog
+*.log.*
+*.tmp
+*.temp
+
+## Package directories
+packages/
+*.nupkg
+
+## Windows desktop artifacts
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
