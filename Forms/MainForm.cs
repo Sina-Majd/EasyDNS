@@ -486,7 +486,7 @@ namespace EasyDNS.Forms
             _txtSearch = new ModernInputField
             {
                 PlaceholderText = "Search presets...",
-                Size = new Size(220, 26),
+                Size = new Size(358, 26),
                 Location = new Point(0, 2)
             };
             _txtSearch.InnerTextBox.TextChanged += delegate(object s, EventArgs e)
@@ -559,10 +559,14 @@ namespace EasyDNS.Forms
             _panelCategories.Controls.Clear();
             var categories = _presetRepo.GetCategories();
 
+            int[] widths = new int[] { 100, 135, 115 };
+            int i = 0;
+
             foreach (var cat in categories)
             {
                 string categoryName = cat;
                 bool isSelected = (categoryName == _selectedCategory);
+                int btnW = (i < widths.Length) ? widths[i] : 100;
 
                 var btn = new ModernButton
                 {
@@ -573,8 +577,7 @@ namespace EasyDNS.Forms
                     CustomBorderColor = isSelected ? Theme.BorderHighlight : Theme.BorderColor,
                     BorderThickness = 1,
                     BorderRadius = 5,
-                    AutoSize = true,
-                    Padding = new Padding(7, 2, 7, 2),
+                    Width = btnW,
                     Margin = new Padding(0, 0, 4, 0),
                     Height = 24
                 };
@@ -587,6 +590,7 @@ namespace EasyDNS.Forms
                 };
 
                 _panelCategories.Controls.Add(btn);
+                i++;
             }
         }
 
@@ -1055,6 +1059,11 @@ namespace EasyDNS.Forms
                         RefreshPresetsList();
                         LogMessage("Deleted custom preset: " + target.Name);
                     }
+                };
+
+                card.OnIpCopied += delegate(string ip)
+                {
+                    LogMessage("Copied DNS IP to clipboard: " + ip);
                 };
 
                 _presetsScrollPanel.ContentContainer.Controls.Add(card);

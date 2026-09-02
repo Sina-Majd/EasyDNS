@@ -658,14 +658,23 @@ namespace EasyDNS.UI
         private bool _isTestPressed;
         private bool _isDeleteHovered;
 
+        private bool _isPrimaryIpHovered;
+        private bool _isSecondaryIpHovered;
+        private bool _copiedPrimary;
+        private bool _copiedSecondary;
+        private Timer _copiedTimer;
+
         public event Action<DnsPreset> OnApplyClicked;
         public event Action<DnsPreset> OnCardSelected;
         public event Action<DnsPreset> OnTestClicked;
         public event Action<DnsPreset> OnDeleteClicked;
+        public event Action<string> OnIpCopied;
 
         private Rectangle _applyBtnRect;
         private Rectangle _testBtnRect;
         private Rectangle _deleteBtnRect;
+        private Rectangle _primaryIpRect;
+        private Rectangle _secondaryIpRect;
 
         public DnsPreset Preset
         {
@@ -692,6 +701,25 @@ namespace EasyDNS.UI
             BackColor = Theme.BackgroundDark;
             Height = 88;
             Cursor = Cursors.Hand;
+
+            _copiedTimer = new Timer { Interval = 1200 };
+            _copiedTimer.Tick += delegate
+            {
+                _copiedPrimary = false;
+                _copiedSecondary = false;
+                _copiedTimer.Stop();
+                Invalidate();
+            };
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && _copiedTimer != null)
+            {
+                _copiedTimer.Dispose();
+                _copiedTimer = null;
+            }
+            base.Dispose(disposing);
         }
 
         protected override void OnResize(EventArgs e)
@@ -700,6 +728,28 @@ namespace EasyDNS.UI
             _applyBtnRect = new Rectangle(Width - 68, Height - 32, 58, 25);
             _testBtnRect = new Rectangle(Width - 116, Height - 32, 44, 25);
             _deleteBtnRect = new Rectangle(Width - 24, 6, 18, 18);
+
+            int textX = 54;
+            int ipY = Height - 31;
+            int ipH = 22;
+
+            int w1 = 80;
+            if (!string.IsNullOrEmpty(_preset.PrimaryDns))
+            {
+                w1 = Math.Max(74, _preset.PrimaryDns.Length * 8 + 14);
+            }
+            _primaryIpRect = new Rectangle(textX, ipY, w1, ipH);
+
+            if (!string.IsNullOrEmpty(_preset.SecondaryDns))
+            {
+                int w2 = Math.Max(74, _preset.SecondaryDns.Length * 8 + 14);
+                int divGap = 16;
+                _secondaryIpRect = new Rectangle(_primaryIpRect.Right + divGap, ipY, w2, ipH);
+            }
+            else
+            {
+                _secondaryIpRect = Rectangle.Empty;
+            }
         }
 
         protected override void OnMouseMove(MouseEventArgs e)
@@ -708,12 +758,17 @@ namespace EasyDNS.UI
             bool applyHover = _applyBtnRect.Contains(e.Location);
             bool testHover = _testBtnRect.Contains(e.Location);
             bool deleteHover = _preset.IsCustom && _deleteBtnRect.Contains(e.Location);
+            bool primaryIpHover = _primaryIpRect.Contains(e.Location);
+            bool secondaryIpHover = !_secondaryIpRect.IsEmpty && _secondaryIpRect.Contains(e.Location);
 
-            if (applyHover != _isApplyHovered || testHover != _isTestHovered || deleteHover != _isDeleteHovered)
+            if (applyHover != _isApplyHovered || testHover != _isTestHovered || deleteHover != _isDeleteHovered ||
+                primaryIpHover != _isPrimaryIpHovered || secondaryIpHover != _isSecondaryIpHovered)
             {
                 _isApplyHovered = applyHover;
                 _isTestHovered = testHover;
                 _isDeleteHovered = deleteHover;
+                _isPrimaryIpHovered = primaryIpHover;
+                _isSecondaryIpHovered = secondaryIpHover;
                 Invalidate();
             }
         }
@@ -734,6 +789,8 @@ namespace EasyDNS.UI
             _isTestHovered = false;
             _isTestPressed = false;
             _isDeleteHovered = false;
+            _isPrimaryIpHovered = false;
+            _isSecondaryIpHovered = false;
             Invalidate();
         }
 
@@ -781,6 +838,38 @@ namespace EasyDNS.UI
                 if (_preset.IsCustom && _deleteBtnRect.Contains(e.Location))
                 {
                     if (OnDeleteClicked != null) OnDeleteClicked(_preset);
+                    return;
+                }
+
+                if (_primaryIpRect.Contains(e.Location))
+                {
+                    try
+                    {
+                        Clipboard.SetText(_preset.PrimaryDns);
+                        _copiedPrimary = true;
+                        _copiedSecondary = false;
+                        _copiedTimer.Stop();
+                        _copiedTimer.Start();
+                        Invalidate();
+                        if (OnIpCopied != null) OnIpCopied(_preset.PrimaryDns);
+                    }
+                    catch { }
+                    return;
+                }
+
+                if (!_secondaryIpRect.IsEmpty && _secondaryIpRect.Contains(e.Location))
+                {
+                    try
+                    {
+                        Clipboard.SetText(_preset.SecondaryDns);
+                        _copiedSecondary = true;
+                        _copiedPrimary = false;
+                        _copiedTimer.Stop();
+                        _copiedTimer.Start();
+                        Invalidate();
+                        if (OnIpCopied != null) OnIpCopied(_preset.SecondaryDns);
+                    }
+                    catch { }
                     return;
                 }
 
@@ -981,7 +1070,7 @@ namespace EasyDNS.UI
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             }
 
-            // 3. Draw Preset Name (Tag badges removed)
+            // 3. Draw Preset Name
             int textX = 54;
             using (var titleBrush = new SolidBrush(Theme.TextPrimary))
             {
@@ -995,31 +1084,52 @@ namespace EasyDNS.UI
                 g.DrawString(_preset.Description, Theme.SmallFont, descBrush, descRect);
             }
 
-            // 5. Draw IP Address Badge
-            string ipText = _preset.PrimaryDns + (string.IsNullOrEmpty(_preset.SecondaryDns) ? "" : "  •  " + _preset.SecondaryDns);
-            int maxIpW = Width - textX - 125;
-            if (maxIpW > 50)
+            // 5. Draw Interactive Copyable Primary & Secondary IP Chips with Modern Separator
+            if (!_primaryIpRect.IsEmpty)
             {
-                var ipRect = new Rectangle(textX, Height - 30, maxIpW, 20);
-                using (var ipPath = Theme.CreateRoundedRectangle(ipRect, 4))
+                Color pFill = _copiedPrimary ? Color.FromArgb(30, 16, 185, 129) : (_isPrimaryIpHovered ? Color.FromArgb(38, 46, 68) : Theme.InputBackground);
+                Color pBorder = _copiedPrimary ? Theme.AccentSuccess : (_isPrimaryIpHovered ? Theme.BorderHighlight : Theme.BorderColor);
+                string pText = _copiedPrimary ? "✓ Copied" : _preset.PrimaryDns;
+                Color pTextColor = _copiedPrimary ? Theme.AccentSuccess : (_isPrimaryIpHovered ? Color.White : Theme.TextPrimary);
+
+                using (var ipPath = Theme.CreateRoundedRectangle(_primaryIpRect, 4))
                 {
-                    using (var ipBgBrush = new SolidBrush(Theme.InputBackground))
-                    {
-                        g.FillPath(ipBgBrush, ipPath);
-                    }
-                    using (var ipPen = new Pen(Theme.BorderColor, 1))
-                    {
-                        g.DrawPath(ipPen, ipPath);
-                    }
+                    using (var brush = new SolidBrush(pFill)) { g.FillPath(brush, ipPath); }
+                    using (var pen = new Pen(pBorder, 1)) { g.DrawPath(pen, ipPath); }
                 }
-                TextRenderer.DrawText(g, ipText, Theme.MonospaceFont, new Rectangle(textX + 4, Height - 29, maxIpW - 8, 18), Theme.TextPrimary,
-                    TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.WordEllipsis);
+                TextRenderer.DrawText(g, pText, Theme.MonospaceFont, _primaryIpRect, pTextColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordEllipsis);
+            }
+
+            if (!_secondaryIpRect.IsEmpty)
+            {
+                // Sleek Vertical Divider Bar between IP chips
+                int divX = (_primaryIpRect.Right + _secondaryIpRect.Left) / 2;
+                using (var divPen = new Pen(Color.FromArgb(70, 80, 110), 1.5f))
+                {
+                    divPen.StartCap = LineCap.Round;
+                    divPen.EndCap = LineCap.Round;
+                    g.DrawLine(divPen, divX, _primaryIpRect.Y + 4, divX, _primaryIpRect.Bottom - 4);
+                }
+
+                Color sFill = _copiedSecondary ? Color.FromArgb(30, 16, 185, 129) : (_isSecondaryIpHovered ? Color.FromArgb(38, 46, 68) : Theme.InputBackground);
+                Color sBorder = _copiedSecondary ? Theme.AccentSuccess : (_isSecondaryIpHovered ? Theme.BorderHighlight : Theme.BorderColor);
+                string sText = _copiedSecondary ? "✓ Copied" : _preset.SecondaryDns;
+                Color sTextColor = _copiedSecondary ? Theme.AccentSuccess : (_isSecondaryIpHovered ? Color.White : Theme.TextPrimary);
+
+                using (var ipPath = Theme.CreateRoundedRectangle(_secondaryIpRect, 4))
+                {
+                    using (var brush = new SolidBrush(sFill)) { g.FillPath(brush, ipPath); }
+                    using (var pen = new Pen(sBorder, 1)) { g.DrawPath(pen, ipPath); }
+                }
+                TextRenderer.DrawText(g, sText, Theme.MonospaceFont, _secondaryIpRect, sTextColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordEllipsis);
             }
 
             // 6. Draw Latency Badge
             DrawLatencyBadge(g);
 
-            // 7. Directly Paint "Apply" Button (Zero Child Control Fringes!)
+            // 7. Directly Paint "Apply" Button
             Color applyFill = _isApplyPressed ? Color.FromArgb(55, 48, 163) : (_isApplyHovered ? Theme.AccentPrimaryHover : Theme.AccentPrimary);
             using (var applyPath = Theme.CreateRoundedRectangle(_applyBtnRect, 5))
             {
