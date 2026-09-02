@@ -2,6 +2,8 @@
 
 EasyDNS is a lightweight Windows desktop utility for configuring network adapter DNS settings. It provides quick switching between popular DNS resolvers, custom DNS management, real-time latency benchmarking, and cache clearing.
 
+![EasyDNS Preview](Resources/screenshot.png)
+
 ## Features
 
 - **DNS Presets**: Preconfigured profiles for major public DNS providers (Cloudflare, Google Public DNS, Quad9, OpenDNS, AdGuard, Control D, NextDNS, and regional/gaming resolvers).
