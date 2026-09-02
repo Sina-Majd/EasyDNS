@@ -349,12 +349,12 @@ namespace EasyDNS.Services
             {
                 string dummy;
                 FlushDnsCache(out dummy);
-                resultMessage = string.Format("DNS reset to Automatic (DHCP) on '{0}'.", adapter.Name);
+                resultMessage = string.Format("DNS reset to default on '{0}'.", adapter.Name);
                 return true;
             }
             else
             {
-                resultMessage = "Failed to reset DNS to DHCP. Please run as Administrator.";
+                resultMessage = "Failed to reset DNS. Please run as Administrator.";
                 return false;
             }
         }

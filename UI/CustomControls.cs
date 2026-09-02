@@ -168,16 +168,53 @@ namespace EasyDNS.UI
     {
         private bool _isHovered;
         private bool _isPressed;
+        private float _rotationAngle = 0f;
+        private Timer _spinTimer;
 
         public ModernRefreshButton()
         {
-            Size = new Size(30, 28);
+            Size = new Size(28, 28);
             Cursor = Cursors.Hand;
             SetStyle(ControlStyles.UserPaint |
                      ControlStyles.AllPaintingInWmPaint |
                      ControlStyles.OptimizedDoubleBuffer |
                      ControlStyles.ResizeRedraw, true);
             BackColor = Theme.TitleBarBackground;
+
+            _spinTimer = new Timer();
+            _spinTimer.Interval = 20;
+            _spinTimer.Tick += delegate
+            {
+                _rotationAngle += 24f;
+                if (_rotationAngle >= 360f)
+                {
+                    _rotationAngle = 0f;
+                    _spinTimer.Stop();
+                }
+                Invalidate();
+            };
+        }
+
+        public void Spin()
+        {
+            _rotationAngle = 0f;
+            _spinTimer.Start();
+        }
+
+        protected override void OnClick(EventArgs e)
+        {
+            Spin();
+            base.OnClick(e);
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && _spinTimer != null)
+            {
+                _spinTimer.Dispose();
+                _spinTimer = null;
+            }
+            base.Dispose(disposing);
         }
 
         protected override void OnMouseEnter(EventArgs e)
@@ -245,19 +282,42 @@ namespace EasyDNS.UI
                 }
             }
 
-            int cx = Width / 2;
-            int cy = Height / 2;
-            int radius = 6;
+            float cx = Width / 2f;
+            float cy = Height / 2f;
+            float r = 5.2f;
             Color iconColor = _isHovered ? Theme.TextPrimary : Theme.TextSecondary;
 
-            using (var arcPen = new Pen(iconColor, 1.4f))
+            var state = g.Save();
+            g.TranslateTransform(cx, cy);
+            if (_rotationAngle != 0f)
             {
-                g.DrawArc(arcPen, cx - radius, cy - radius, radius * 2, radius * 2, 45, 270);
-                int tipX = cx + 4;
-                int tipY = cy - 4;
-                g.DrawLine(arcPen, tipX, tipY, tipX + 3, tipY - 1);
-                g.DrawLine(arcPen, tipX, tipY, tipX + 1, tipY + 3);
+                g.RotateTransform(_rotationAngle);
             }
+
+            using (var pen = new Pen(iconColor, 1.45f))
+            {
+                pen.StartCap = LineCap.Round;
+                pen.EndCap = LineCap.Round;
+                pen.LineJoin = LineJoin.Round;
+
+                // Dual arc circular sync icon
+                g.DrawArc(pen, -r, -r, r * 2, r * 2, 210, 125);
+                g.DrawArc(pen, -r, -r, r * 2, r * 2, 30, 125);
+
+                // Arrow 1 at 335 deg (top right)
+                float ax1 = (float)(r * Math.Cos(335 * Math.PI / 180));
+                float ay1 = (float)(r * Math.Sin(335 * Math.PI / 180));
+                g.DrawLine(pen, ax1, ay1, ax1 + 2.8f, ay1 - 1.2f);
+                g.DrawLine(pen, ax1, ay1, ax1 - 1.2f, ay1 - 2.8f);
+
+                // Arrow 2 at 155 deg (bottom left)
+                float ax2 = (float)(r * Math.Cos(155 * Math.PI / 180));
+                float ay2 = (float)(r * Math.Sin(155 * Math.PI / 180));
+                g.DrawLine(pen, ax2, ay2, ax2 - 2.8f, ay2 + 1.2f);
+                g.DrawLine(pen, ax2, ay2, ax2 + 1.2f, ay2 + 2.8f);
+            }
+
+            g.Restore(state);
         }
     }
 

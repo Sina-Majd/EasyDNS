@@ -70,7 +70,6 @@ namespace EasyDNS.Forms
         private Label _lblAdapterTitle;
         private ModernComboBox _cmbAdapters;
         private ModernRefreshButton _btnRefreshAdapters;
-        private StatusBadgeControl _lblStatusPill;
         private WindowControlButton _btnMinimize;
         private WindowControlButton _btnMaximize;
         private WindowControlButton _btnClose;
@@ -382,15 +381,19 @@ namespace EasyDNS.Forms
             };
             _lblAppTitle.MouseDown += DragWindow;
 
-            // Adapter Selector Container
+            // Adapter Selector Container (Centered in Title Bar)
             _panelAdapterDropdown = new Panel
             {
                 Height = 36,
-                Width = 620,
-                BackColor = Color.Transparent,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                Location = new Point(_titleBar.Width - 770, 7)
+                Width = 414,
+                BackColor = Color.Transparent
             };
+
+            Action centerAdapterDropdown = delegate
+            {
+                _panelAdapterDropdown.Location = new Point(Math.Max(140, (_titleBar.ClientSize.Width - _panelAdapterDropdown.Width) / 2), 7);
+            };
+            _titleBar.SizeChanged += delegate(object s, EventArgs e) { centerAdapterDropdown(); };
 
             _lblAdapterTitle = new Label
             {
@@ -416,16 +419,10 @@ namespace EasyDNS.Forms
             };
             _btnRefreshAdapters.Click += delegate(object s, EventArgs e) { LoadAdapters(); };
 
-            _lblStatusPill = new StatusBadgeControl
-            {
-                Location = new Point(416, 4),
-                Height = 28
-            };
-
             _panelAdapterDropdown.Controls.Add(_lblAdapterTitle);
             _panelAdapterDropdown.Controls.Add(_cmbAdapters);
             _panelAdapterDropdown.Controls.Add(_btnRefreshAdapters);
-            _panelAdapterDropdown.Controls.Add(_lblStatusPill);
+            centerAdapterDropdown();
 
             // Window Control Buttons (Min, Max, Close)
             _btnClose = new WindowControlButton(WindowControlButton.ButtonType.Close)
@@ -812,7 +809,7 @@ namespace EasyDNS.Forms
 
             _btnResetDhcp = new ModernButton
             {
-                Text = "Reset to DHCP",
+                Text = "Reset to Default",
                 Font = Theme.BodyBoldFont,
                 NormalColor = Color.FromArgb(217, 119, 6),
                 HoverColor = Color.FromArgb(245, 158, 11),
@@ -976,7 +973,6 @@ namespace EasyDNS.Forms
             {
                 _lblCurrentPrimaryDns.Text = "Primary: None";
                 _lblCurrentSecondaryDns.Text = "Secondary: None";
-                _lblStatusPill.SetStatus("Disconnected", Theme.AccentDanger);
                 return;
             }
 
@@ -984,16 +980,11 @@ namespace EasyDNS.Forms
             {
                 _lblCurrentPrimaryDns.Text = "Primary: " + _selectedAdapter.DnsServers[0];
                 _lblCurrentSecondaryDns.Text = "Secondary: " + (_selectedAdapter.DnsServers.Count > 1 ? _selectedAdapter.DnsServers[1] : "None");
-
-                string mode = _selectedAdapter.IsDhcpEnabled ? "DHCP (Auto)" : "Static DNS";
-                Color clr = _selectedAdapter.IsDhcpEnabled ? Theme.AccentWarning : Theme.AccentSuccess;
-                _lblStatusPill.SetStatus(mode, clr);
             }
             else
             {
                 _lblCurrentPrimaryDns.Text = "Primary: Automatic (Router)";
                 _lblCurrentSecondaryDns.Text = "Secondary: None";
-                _lblStatusPill.SetStatus("DHCP (Auto)", Theme.AccentWarning);
             }
         }
 
@@ -1242,7 +1233,7 @@ namespace EasyDNS.Forms
                 return;
             }
 
-            LogMessage("Resetting DNS to Automatic (DHCP) on " + _selectedAdapter.Name + "...");
+            LogMessage("Resetting DNS to default on " + _selectedAdapter.Name + "...");
 
             string resultMsg;
             bool success = _dnsManager.ResetToDhcp(_selectedAdapter, out resultMsg);
