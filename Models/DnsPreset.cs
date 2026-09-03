@@ -14,13 +14,16 @@ namespace EasyDNS.Models
         public bool IsCustom { get; set; }
         public long? LatencyMs { get; set; }
         public bool IsCheckingLatency { get; set; }
+        public bool IsActive { get; set; }
+        public string DohTemplate { get; set; }
 
         public DnsPreset()
         {
             Id = Guid.NewGuid().ToString("N");
+            DohTemplate = "";
         }
 
-        public DnsPreset(string name, string primaryDns, string secondaryDns, string category, string description)
+        public DnsPreset(string name, string primaryDns, string secondaryDns, string category, string description, string dohTemplate = "")
         {
             Id = Guid.NewGuid().ToString("N");
             Name = name;
@@ -30,6 +33,8 @@ namespace EasyDNS.Models
             Description = description;
             Tag = "";
             IsCustom = false;
+            IsActive = false;
+            DohTemplate = dohTemplate ?? "";
         }
 
         public override string ToString()

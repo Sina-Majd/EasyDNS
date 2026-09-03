@@ -32,25 +32,25 @@ namespace EasyDNS.Services
             _presets.Clear();
 
             // Universal / Global DNS Providers
-            _presets.Add(new DnsPreset("Cloudflare (1.1.1.1)", "1.1.1.1", "1.0.0.1", "Universal", "Ultra-fast, privacy-first DNS by Cloudflare & APNIC."));
-            _presets.Add(new DnsPreset("Google Public DNS", "8.8.8.8", "8.8.4.4", "Universal", "Global, highly reliable public DNS service by Google."));
-            _presets.Add(new DnsPreset("Quad9 (Malware Blocking)", "9.9.9.9", "149.112.112.112", "Universal", "Blocks malicious domains, phishing, and botnets with zero logging."));
-            _presets.Add(new DnsPreset("Quad9 (Uncensored)", "9.9.9.10", "149.112.112.10", "Universal", "Uncensored, non-blocking Quad9 DNS without filtering."));
-            _presets.Add(new DnsPreset("OpenDNS Home", "208.67.222.222", "208.67.220.220", "Universal", "Cisco Umbrella cloud DNS with intelligent routing and protection."));
+            _presets.Add(new DnsPreset("Cloudflare (1.1.1.1)", "1.1.1.1", "1.0.0.1", "Universal", "Ultra-fast, privacy-first DNS by Cloudflare & APNIC.", "https://cloudflare-dns.com/dns-query"));
+            _presets.Add(new DnsPreset("Google Public DNS", "8.8.8.8", "8.8.4.4", "Universal", "Global, highly reliable public DNS service by Google.", "https://dns.google/dns-query"));
+            _presets.Add(new DnsPreset("Quad9 (Malware Blocking)", "9.9.9.9", "149.112.112.112", "Universal", "Blocks malicious domains, phishing, and botnets with zero logging.", "https://dns.quad9.net/dns-query"));
+            _presets.Add(new DnsPreset("Quad9 (Uncensored)", "9.9.9.10", "149.112.112.10", "Universal", "Uncensored, non-blocking Quad9 DNS without filtering.", "https://dns.quad9.net/dns-query"));
+            _presets.Add(new DnsPreset("OpenDNS Home", "208.67.222.222", "208.67.220.220", "Universal", "Cisco Umbrella cloud DNS with intelligent routing and protection.", "https://doh.opendns.com/dns-query"));
             
             // Ad-Blocking & Privacy (Universal)
-            _presets.Add(new DnsPreset("AdGuard DNS (Default)", "94.140.14.14", "94.140.15.15", "Universal", "Blocks ads, trackers, banners, and phishing domains."));
-            _presets.Add(new DnsPreset("AdGuard DNS (Family)", "94.140.14.15", "94.140.15.16", "Universal", "Blocks ads, trackers, adult websites and enables safe search."));
-            _presets.Add(new DnsPreset("Control D (Malware)", "76.76.2.1", "76.76.10.1", "Universal", "Blocks malware, phishing, and known malicious hosts."));
-            _presets.Add(new DnsPreset("Control D (Unfiltered)", "76.76.2.0", "76.76.10.0", "Universal", "High-performance unfiltered DNS by Control D."));
-            _presets.Add(new DnsPreset("NextDNS", "45.90.28.0", "45.90.30.0", "Universal", "Modern cloud DNS with advanced privacy protection."));
+            _presets.Add(new DnsPreset("AdGuard DNS (Default)", "94.140.14.14", "94.140.15.15", "Universal", "Blocks ads, trackers, banners, and phishing domains.", "https://dns.adguard-dns.com/dns-query"));
+            _presets.Add(new DnsPreset("AdGuard DNS (Family)", "94.140.14.15", "94.140.15.16", "Universal", "Blocks ads, trackers, adult websites and enables safe search.", "https://dns.adguard-dns.com/dns-query"));
+            _presets.Add(new DnsPreset("Control D (Malware)", "76.76.2.1", "76.76.10.1", "Universal", "Blocks malware, phishing, and known malicious hosts.", "https://freedns.controld.com/p0"));
+            _presets.Add(new DnsPreset("Control D (Unfiltered)", "76.76.2.0", "76.76.10.0", "Universal", "High-performance unfiltered DNS by Control D.", "https://freedns.controld.com/p0"));
+            _presets.Add(new DnsPreset("NextDNS", "45.90.28.0", "45.90.30.0", "Universal", "Modern cloud DNS with advanced privacy protection.", "https://dns.nextdns.io"));
 
             // Content Protection & Tier 1 (Universal)
-            _presets.Add(new DnsPreset("Cloudflare (Malware Block)", "1.1.1.2", "1.0.0.2", "Universal", "1.1.1.1 with automated malware and threat blocking."));
-            _presets.Add(new DnsPreset("Cloudflare (Family Safe)", "1.1.1.3", "1.0.0.3", "Universal", "Blocks malware and adult content automatically."));
-            _presets.Add(new DnsPreset("OpenDNS FamilyShield", "208.67.222.123", "208.67.220.123", "Universal", "Pre-configured adult content blocking by OpenDNS."));
-            _presets.Add(new DnsPreset("CleanBrowsing (Security)", "185.228.168.9", "185.228.169.9", "Universal", "Blocks malware, phishing, and malicious domains."));
-            _presets.Add(new DnsPreset("CleanBrowsing (Family)", "185.228.168.168", "185.228.169.168", "Universal", "Blocks adult content, phishing, and enforces SafeSearch."));
+            _presets.Add(new DnsPreset("Cloudflare (Malware Block)", "1.1.1.2", "1.0.0.2", "Universal", "1.1.1.1 with automated malware and threat blocking.", "https://cloudflare-dns.com/dns-query"));
+            _presets.Add(new DnsPreset("Cloudflare (Family Safe)", "1.1.1.3", "1.0.0.3", "Universal", "Blocks malware and adult content automatically.", "https://cloudflare-dns.com/dns-query"));
+            _presets.Add(new DnsPreset("OpenDNS FamilyShield", "208.67.222.123", "208.67.220.123", "Universal", "Pre-configured adult content blocking by OpenDNS.", "https://doh.opendns.com/dns-query"));
+            _presets.Add(new DnsPreset("CleanBrowsing (Security)", "185.228.168.9", "185.228.169.9", "Universal", "Blocks malware, phishing, and malicious domains.", "https://doh.cleanbrowsing.org/doh/security-filter/"));
+            _presets.Add(new DnsPreset("CleanBrowsing (Family)", "185.228.168.168", "185.228.169.168", "Universal", "Blocks adult content, phishing, and enforces SafeSearch.", "https://doh.cleanbrowsing.org/doh/family-filter/"));
             _presets.Add(new DnsPreset("Comodo Secure DNS", "8.26.56.26", "8.20.247.20", "Universal", "Cloud-based security DNS by Comodo CyberSecurity."));
             _presets.Add(new DnsPreset("DNS.WATCH", "84.200.69.80", "84.200.70.40", "Universal", "Fast, uncensored, no-logging European DNS."));
             _presets.Add(new DnsPreset("Level3 (CenturyLink)", "4.2.2.1", "4.2.2.2", "Universal", "Tier-1 backbone DNS server infrastructure."));

@@ -486,5 +486,67 @@ namespace EasyDNS.Services
             }
             return false;
         }
+
+        /// <summary>
+        /// Checks if current operating system is Windows 11 or newer (Build >= 22000).
+        /// </summary>
+        public static bool IsWindows11OrGreater()
+        {
+            try
+            {
+                var os = Environment.OSVersion;
+                return os.Platform == PlatformID.Win32NT &&
+                       os.Version.Major >= 10 &&
+                       os.Version.Build >= 22000;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Configures native Windows 11 DNS-over-HTTPS (DoH) encryption for a given adapter and resolver IP.
+        /// </summary>
+        public bool ConfigureDoH(NetworkAdapterInfo adapter, string dnsIp, string dohTemplate, out string message)
+        {
+            message = string.Empty;
+            if (adapter == null || string.IsNullOrWhiteSpace(dnsIp) || string.IsNullOrWhiteSpace(dohTemplate))
+            {
+                message = "Invalid adapter, IP, or DoH template.";
+                return false;
+            }
+
+            if (!IsWindows11OrGreater())
+            {
+                message = "Native DNS-over-HTTPS requires Windows 11 (Build 22000+).";
+                return false;
+            }
+
+            try
+            {
+                string safeAdapterName = adapter.Name.Replace("\"", "\\\"");
+                string cmd = string.Format("dns add encryption interface=\"{0}\" ip={1} dohtemplate=\"{2}\" autoupgrade=yes",
+                    safeAdapterName, dnsIp.Trim(), dohTemplate.Trim());
+
+                string output, error;
+                bool success = RunProcess("netsh", cmd, out output, out error);
+                if (success)
+                {
+                    message = "DNS-over-HTTPS encryption configured for " + dnsIp + " on '" + adapter.Name + "'.";
+                    return true;
+                }
+                else
+                {
+                    message = "Failed to configure DoH: " + (!string.IsNullOrWhiteSpace(error) ? error.Trim() : output.Trim());
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                message = "DoH configuration error: " + ex.Message;
+                return false;
+            }
+        }
     }
 }
