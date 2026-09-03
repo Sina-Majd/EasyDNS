@@ -127,7 +127,7 @@ namespace EasyDNS.UI
         {
             var g = pevent.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.PixelOffsetMode = PixelOffsetMode.Default;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
             // 1. Fill exact parent background color
@@ -153,6 +153,7 @@ namespace EasyDNS.UI
                 {
                     using (var pen = new Pen(CustomBorderColor, BorderThickness))
                     {
+                        pen.Alignment = PenAlignment.Inset;
                         g.DrawPath(pen, path);
                     }
                 }
@@ -454,6 +455,7 @@ namespace EasyDNS.UI
 
         private readonly TextBox _innerBox;
         private bool _isFocused;
+        private bool _isHovered;
         private string _placeholderText = "";
 
         public TextBox InnerTextBox
@@ -521,6 +523,11 @@ namespace EasyDNS.UI
                 Invalidate();
             };
 
+            MouseEnter += delegate { _isHovered = true; Invalidate(); };
+            MouseLeave += delegate { _isHovered = false; Invalidate(); };
+            _innerBox.MouseEnter += delegate { _isHovered = true; Invalidate(); };
+            _innerBox.MouseLeave += delegate { _isHovered = false; Invalidate(); };
+
             Controls.Add(_innerBox);
         }
 
@@ -537,8 +544,9 @@ namespace EasyDNS.UI
             base.OnResize(e);
             if (_innerBox != null)
             {
-                _innerBox.Location = new Point(8, (Height - _innerBox.Height) / 2);
-                _innerBox.Width = Width - 16;
+                int y = Math.Max(2, (Height - _innerBox.PreferredHeight) / 2);
+                _innerBox.Location = new Point(10, y);
+                _innerBox.Width = Math.Max(10, Width - 20);
             }
         }
 
@@ -562,7 +570,7 @@ namespace EasyDNS.UI
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.PixelOffsetMode = PixelOffsetMode.Default;
 
             Color parentBg = GetEffectiveParentBackground();
             using (var clearBrush = new SolidBrush(parentBg))
@@ -573,9 +581,11 @@ namespace EasyDNS.UI
             var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
             if (bounds.Width <= 0 || bounds.Height <= 0) return;
 
-            Color borderColor = _isFocused ? Theme.BorderHighlight : Theme.BorderColor;
+            Color borderColor = _isFocused 
+                ? Theme.BorderHighlight 
+                : (_isHovered ? Color.FromArgb(65, 75, 105) : Theme.BorderColor);
 
-            using (var path = Theme.CreateRoundedRectangle(bounds, 5))
+            using (var path = Theme.CreateRoundedRectangle(bounds, 6))
             {
                 using (var brush = new SolidBrush(Theme.InputBackground))
                 {
@@ -584,6 +594,7 @@ namespace EasyDNS.UI
 
                 using (var pen = new Pen(borderColor, _isFocused ? 1.5f : 1f))
                 {
+                    pen.Alignment = PenAlignment.Inset;
                     g.DrawPath(pen, path);
                 }
             }
@@ -616,7 +627,7 @@ namespace EasyDNS.UI
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.PixelOffsetMode = PixelOffsetMode.Default;
 
             Color parentBg = (Parent != null && Parent.BackColor != Color.Transparent) ? Parent.BackColor : Theme.BackgroundDark;
             using (var clearBrush = new SolidBrush(parentBg))
@@ -638,6 +649,7 @@ namespace EasyDNS.UI
                 {
                     using (var pen = new Pen(CustomBorderColor, CustomBorderWidth))
                     {
+                        pen.Alignment = PenAlignment.Inset;
                         g.DrawPath(pen, path);
                     }
                 }
@@ -1011,7 +1023,7 @@ namespace EasyDNS.UI
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.PixelOffsetMode = PixelOffsetMode.Default;
             g.TextRenderingHint = TextRenderingHint.ClearTypeGridFit;
 
             // 1. Clear parent background
@@ -1028,7 +1040,7 @@ namespace EasyDNS.UI
             Color borderColor = _preset.IsActive 
                 ? Theme.AccentSuccess 
                 : (_isSelected ? Theme.BorderHighlight : (_isCardHovered ? Color.FromArgb(79, 70, 229) : Theme.BorderColor));
-            int borderWidth = (_isSelected || _preset.IsActive) ? 2 : 1;
+            float borderWidth = (_isSelected || _preset.IsActive) ? 1.5f : 1f;
 
             using (var path = Theme.CreateRoundedRectangle(bounds, 8))
             {
@@ -1039,6 +1051,7 @@ namespace EasyDNS.UI
 
                 using (var pen = new Pen(borderColor, borderWidth))
                 {
+                    pen.Alignment = PenAlignment.Inset;
                     g.DrawPath(pen, path);
                 }
             }
@@ -1095,6 +1108,7 @@ namespace EasyDNS.UI
                     }
                     using (var abPen = new Pen(Color.FromArgb(100, Theme.AccentSuccess), 1))
                     {
+                        abPen.Alignment = PenAlignment.Inset;
                         g.DrawPath(abPen, activePath);
                     }
                 }
@@ -1120,7 +1134,11 @@ namespace EasyDNS.UI
                 using (var ipPath = Theme.CreateRoundedRectangle(_primaryIpRect, 4))
                 {
                     using (var brush = new SolidBrush(pFill)) { g.FillPath(brush, ipPath); }
-                    using (var pen = new Pen(pBorder, 1)) { g.DrawPath(pen, ipPath); }
+                    using (var pen = new Pen(pBorder, 1))
+                    {
+                        pen.Alignment = PenAlignment.Inset;
+                        g.DrawPath(pen, ipPath);
+                    }
                 }
                 TextRenderer.DrawText(g, pText, Theme.MonospaceFont, _primaryIpRect, pTextColor,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordEllipsis);
@@ -1145,7 +1163,11 @@ namespace EasyDNS.UI
                 using (var ipPath = Theme.CreateRoundedRectangle(_secondaryIpRect, 4))
                 {
                     using (var brush = new SolidBrush(sFill)) { g.FillPath(brush, ipPath); }
-                    using (var pen = new Pen(sBorder, 1)) { g.DrawPath(pen, ipPath); }
+                    using (var pen = new Pen(sBorder, 1))
+                    {
+                        pen.Alignment = PenAlignment.Inset;
+                        g.DrawPath(pen, ipPath);
+                    }
                 }
                 TextRenderer.DrawText(g, sText, Theme.MonospaceFont, _secondaryIpRect, sTextColor,
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.WordEllipsis);

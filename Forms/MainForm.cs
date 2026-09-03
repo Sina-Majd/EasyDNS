@@ -743,7 +743,7 @@ namespace EasyDNS.Forms
                 Text = "1.1.1.1",
                 PlaceholderText = "e.g. 1.1.1.1",
                 Location = new Point(15, 50),
-                Size = new Size(160, 26)
+                Size = new Size(160, 28)
             };
 
             var lblSecondaryPrompt = new Label
@@ -761,7 +761,7 @@ namespace EasyDNS.Forms
                 Text = "1.0.0.1",
                 PlaceholderText = "e.g. 1.0.0.1",
                 Location = new Point(190, 50),
-                Size = new Size(160, 26)
+                Size = new Size(160, 28)
             };
 
             _btnSwapDns = new ModernButton
