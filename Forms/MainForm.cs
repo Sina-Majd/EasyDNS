@@ -186,7 +186,8 @@ namespace EasyDNS.Forms
                 // 2. Load Logo Image directly from embedded resource stream
                 try
                 {
-                    using (var logoStream = asm.GetManifestResourceStream("EasyDNS.Resources.app_logo.jpg"))
+                    using (var logoStream = asm.GetManifestResourceStream("EasyDNS.Resources.app_logo.png")
+                                         ?? asm.GetManifestResourceStream("EasyDNS.Resources.app_logo.jpg"))
                     {
                         if (logoStream != null)
                         {
@@ -199,7 +200,10 @@ namespace EasyDNS.Forms
                 // Fallback to disk if running in development environment
                 if (_appLogoImage == null)
                 {
-                    string logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "app_logo.jpg");
+                    string logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "app_logo.png");
+                    if (!File.Exists(logoPath))
+                        logoPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "app_logo.jpg");
+
                     if (File.Exists(logoPath))
                     {
                         _appLogoImage = Image.FromFile(logoPath);
