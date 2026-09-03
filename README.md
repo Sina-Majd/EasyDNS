@@ -15,8 +15,8 @@ EasyDNS is a lightweight Windows desktop utility for configuring network adapter
 
 ## System Requirements
 
-- **Operating System**: Windows 10 or Windows 11 (Windows 7/8 supported with .NET 4.8)
-- **Runtime**: .NET Framework 4.8 (pre-installed on modern Windows versions)
+- **Operating System**: Windows 10 or Windows 11 (Windows 7/8 supported with .NET Framework 4.8)
+- **Runtime**: .NET 8.0 Desktop Runtime (or .NET Framework 4.8)
 - **Permissions**: Administrator privileges (required by Windows to modify network interface configurations)
 
 ## Usage
@@ -30,27 +30,30 @@ EasyDNS is a lightweight Windows desktop utility for configuring network adapter
 
 ### Prerequisites
 
-- Visual Studio 2019 / 2022 (with the **.NET desktop development** workload) or the standalone MSBuild Tools.
-- .NET Framework 4.8 Developer Pack.
+- .NET 8.0 SDK (or Visual Studio 2022 with **.NET desktop development** workload).
 
 ### Build Instructions
 
-To compile from the command line using MSBuild:
+To compile from the command line using the .NET CLI:
 
 ```cmd
-msbuild EasyDNS.csproj /p:Configuration=Release
+dotnet build EasyDNS.csproj -c Release
 ```
 
-Alternatively, run the included build script:
+To publish a standalone single-file 64-bit executable:
 
 ```cmd
-build.bat
+dotnet publish EasyDNS.csproj -c Release -f net8.0-windows -r win-x64 -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false --self-contained false -o bin\Publish
 ```
 
-The compiled standalone executable will be output to:
-```
-bin\Release\EasyDNS.exe
-```
+Alternatively, run the included batch scripts:
+- `build.bat`: Quick compile and test runner.
+- `publish.bat`: Automated standalone release publisher.
+
+The compiled executable will be output to:
+- Standalone Release: `bin\Publish\EasyDNS.exe`
+- .NET 8 Output: `bin\Release\net8.0-windows\EasyDNS.exe`
+- .NET 4.8 Output: `bin\Release\net48\EasyDNS.exe`
 
 ## Storage & Configuration
 
