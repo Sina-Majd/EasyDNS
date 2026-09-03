@@ -11,8 +11,12 @@ namespace EasyDNS
         [STAThread]
         static void Main()
         {
+#if NET8_0_OR_GREATER
+            ApplicationConfiguration.Initialize();
+#else
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
+#endif
 
             // Automatically request Administrator elevation if not already elevated
             if (!IsRunAsAdmin())
