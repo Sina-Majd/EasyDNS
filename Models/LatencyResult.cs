@@ -6,13 +6,15 @@ namespace EasyDNS.Models
         public long RoundtripTimeMs { get; set; }
         public bool Success { get; set; }
         public string StatusMessage { get; set; }
+        public string Protocol { get; set; }
 
-        public LatencyResult(string hostOrIp, long rttMs, bool success, string statusMessage = "")
+        public LatencyResult(string hostOrIp, long rttMs, bool success, string statusMessage = "", string protocol = "ICMP")
         {
             HostOrIp = hostOrIp;
             RoundtripTimeMs = rttMs;
             Success = success;
             StatusMessage = statusMessage;
+            Protocol = protocol ?? "ICMP";
         }
 
         public string DisplayText
