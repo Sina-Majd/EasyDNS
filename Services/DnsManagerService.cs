@@ -286,7 +286,12 @@ namespace EasyDNS.Services
             }
             catch { }
 
-            bool netshSuccess = SetDnsViaNetsh(adapter.Name, servers);
+            bool netshSuccess = false;
+            string netshError = string.Empty;
+            if (!wmiSuccess)
+            {
+                netshSuccess = SetDnsViaNetsh(adapter.Name, servers, out netshError);
+            }
 
             if (wmiSuccess || netshSuccess)
             {
@@ -297,7 +302,7 @@ namespace EasyDNS.Services
             }
             else
             {
-                resultMessage = "Failed to update DNS settings. Please ensure the app is run as Administrator.";
+                resultMessage = "Failed to update DNS settings: " + (string.IsNullOrWhiteSpace(netshError) ? "Please ensure the app is run as Administrator." : netshError);
                 return false;
             }
         }
@@ -343,7 +348,12 @@ namespace EasyDNS.Services
             }
             catch { }
 
-            bool netshSuccess = ResetDnsViaNetsh(adapter.Name);
+            bool netshSuccess = false;
+            string netshError = string.Empty;
+            if (!wmiSuccess)
+            {
+                netshSuccess = ResetDnsViaNetsh(adapter.Name, out netshError);
+            }
 
             if (wmiSuccess || netshSuccess)
             {
@@ -354,65 +364,123 @@ namespace EasyDNS.Services
             }
             else
             {
-                resultMessage = "Failed to reset DNS. Please run as Administrator.";
+                resultMessage = "Failed to reset DNS: " + (string.IsNullOrWhiteSpace(netshError) ? "Please run as Administrator." : netshError);
                 return false;
             }
         }
 
-        private bool SetDnsViaNetsh(string adapterName, List<string> servers)
+        private bool SetDnsViaNetsh(string adapterName, List<string> servers, out string errorMsg)
         {
+            errorMsg = string.Empty;
             try
             {
-                if (servers.Count > 0)
+                if (servers != null && servers.Count > 0)
                 {
-                    string cmd = string.Format("interface ipv4 set dns name=\"{0}\" source=static address={1} register=primary", adapterName, servers[0]);
-                    RunProcess("netsh", cmd);
+                    string safeAdapterName = adapterName.Replace("\"", "\\\"");
+                    string cmd1 = string.Format("interface ipv4 set dns name=\"{0}\" source=static address={1} register=primary", safeAdapterName, servers[0]);
+                    string out1, err1;
+                    bool ok1 = RunProcess("netsh", cmd1, out out1, out err1);
+                    if (!ok1)
+                    {
+                        errorMsg = !string.IsNullOrWhiteSpace(err1) ? err1.Trim() : (!string.IsNullOrWhiteSpace(out1) ? out1.Trim() : "netsh command failed");
+                        return false;
+                    }
 
                     if (servers.Count > 1)
                     {
-                        string cmd2 = string.Format("interface ipv4 add dns name=\"{0}\" address={1} index=2", adapterName, servers[1]);
-                        RunProcess("netsh", cmd2);
+                        string cmd2 = string.Format("interface ipv4 add dns name=\"{0}\" address={1} index=2", safeAdapterName, servers[1]);
+                        string out2, err2;
+                        bool ok2 = RunProcess("netsh", cmd2, out out2, out err2);
+                        if (!ok2)
+                        {
+                            errorMsg = !string.IsNullOrWhiteSpace(err2) ? err2.Trim() : (!string.IsNullOrWhiteSpace(out2) ? out2.Trim() : "Failed to add secondary DNS server");
+                            return false;
+                        }
                     }
                     return true;
                 }
             }
-            catch { }
+            catch (Exception ex)
+            {
+                errorMsg = ex.Message;
+            }
             return false;
         }
 
-        private bool ResetDnsViaNetsh(string adapterName)
+        private bool ResetDnsViaNetsh(string adapterName, out string errorMsg)
         {
+            errorMsg = string.Empty;
             try
             {
-                string cmd = string.Format("interface ipv4 set dns name=\"{0}\" source=dhcp", adapterName);
-                RunProcess("netsh", cmd);
+                string safeAdapterName = adapterName.Replace("\"", "\\\"");
+                string cmd = string.Format("interface ipv4 set dns name=\"{0}\" source=dhcp", safeAdapterName);
+                string out1, err1;
+                bool ok = RunProcess("netsh", cmd, out out1, out err1);
+                if (!ok)
+                {
+                    errorMsg = !string.IsNullOrWhiteSpace(err1) ? err1.Trim() : (!string.IsNullOrWhiteSpace(out1) ? out1.Trim() : "netsh DHCP reset failed");
+                    return false;
+                }
                 return true;
             }
-            catch { }
+            catch (Exception ex)
+            {
+                errorMsg = ex.Message;
+            }
             return false;
         }
 
-        private static void RunProcess(string filename, string arguments)
+        private static bool RunProcess(string filename, string arguments, out string output, out string error)
         {
-            var psi = new ProcessStartInfo(filename, arguments);
-            psi.CreateNoWindow = true;
-            psi.UseShellExecute = false;
-            psi.RedirectStandardOutput = true;
-            psi.RedirectStandardError = true;
-            using (var proc = Process.Start(psi))
+            output = string.Empty;
+            error = string.Empty;
+            try
             {
-                proc.WaitForExit(3000);
+                var psi = new ProcessStartInfo(filename, arguments);
+                psi.CreateNoWindow = true;
+                psi.UseShellExecute = false;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                using (var proc = Process.Start(psi))
+                {
+                    if (proc == null)
+                    {
+                        error = "Failed to launch process: " + filename;
+                        return false;
+                    }
+                    output = proc.StandardOutput.ReadToEnd();
+                    error = proc.StandardError.ReadToEnd();
+                    proc.WaitForExit(4000);
+                    return proc.ExitCode == 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+                return false;
             }
         }
 
         /// <summary>
-        /// Validates if an IP string is a valid IPv4 address.
+        /// Validates if an IP string is a valid IPv4 address (strictly 4 octets, 0-255).
         /// </summary>
         public static bool IsValidIpv4(string ipString)
         {
             if (string.IsNullOrWhiteSpace(ipString)) return false;
+            string trimmed = ipString.Trim();
+            string[] parts = trimmed.Split('.');
+            if (parts.Length != 4) return false;
+
+            for (int i = 0; i < parts.Length; i++)
+            {
+                string part = parts[i];
+                byte b;
+                if (!byte.TryParse(part, out b)) return false;
+                if (part.Length > 1 && part.StartsWith("0")) return false;
+            }
+
             IPAddress address;
-            if (IPAddress.TryParse(ipString.Trim(), out address))
+            if (IPAddress.TryParse(trimmed, out address))
             {
                 return address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork;
             }
