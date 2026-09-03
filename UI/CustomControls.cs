@@ -1025,8 +1025,10 @@ namespace EasyDNS.UI
             if (bounds.Width <= 0 || bounds.Height <= 0) return;
 
             Color cardBg = _isSelected ? Theme.CardSelected : (_isCardHovered ? Theme.CardHover : Theme.CardBackground);
-            Color borderColor = _isSelected ? Theme.BorderHighlight : (_isCardHovered ? Color.FromArgb(79, 70, 229) : Theme.BorderColor);
-            int borderWidth = _isSelected ? 2 : 1;
+            Color borderColor = _preset.IsActive 
+                ? Theme.AccentSuccess 
+                : (_isSelected ? Theme.BorderHighlight : (_isCardHovered ? Color.FromArgb(79, 70, 229) : Theme.BorderColor));
+            int borderWidth = (_isSelected || _preset.IsActive) ? 2 : 1;
 
             using (var path = Theme.CreateRoundedRectangle(bounds, 8))
             {
@@ -1073,11 +1075,31 @@ namespace EasyDNS.UI
                     TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             }
 
-            // 3. Draw Preset Name
+            // 3. Draw Preset Name & Active Badge
             int textX = 54;
             using (var titleBrush = new SolidBrush(Theme.TextPrimary))
             {
                 g.DrawString(_preset.Name, Theme.SubHeaderFont, titleBrush, new PointF(textX, 8));
+            }
+
+            if (_preset.IsActive)
+            {
+                SizeF nameSize = g.MeasureString(_preset.Name, Theme.SubHeaderFont);
+                int activeBadgeX = textX + (int)nameSize.Width + 6;
+                var activeBadgeRect = new Rectangle(activeBadgeX, 8, 56, 18);
+                using (var activePath = Theme.CreateRoundedRectangle(activeBadgeRect, 4))
+                {
+                    using (var abBrush = new SolidBrush(Color.FromArgb(28, Theme.AccentSuccess)))
+                    {
+                        g.FillPath(abBrush, activePath);
+                    }
+                    using (var abPen = new Pen(Color.FromArgb(100, Theme.AccentSuccess), 1))
+                    {
+                        g.DrawPath(abPen, activePath);
+                    }
+                }
+                TextRenderer.DrawText(g, "● Active", Theme.SmallFont, activeBadgeRect, Theme.AccentSuccess,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter);
             }
 
             // 4. Draw Description

@@ -6,6 +6,7 @@ using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using EasyDNS.Models;
@@ -60,6 +61,8 @@ namespace EasyDNS.Forms
         private string _selectedCategory = "All";
         private string _searchQuery = "";
         private bool _isBenchmarkingAll = false;
+        private CancellationTokenSource _benchmarkCts;
+        private DnsPreset _lastAppliedPreset;
         private Image _appLogoImage;
 
         // Custom Window Title Bar
@@ -977,6 +980,7 @@ namespace EasyDNS.Forms
             {
                 _lblCurrentPrimaryDns.Text = "Primary: None";
                 _lblCurrentSecondaryDns.Text = "Secondary: None";
+                UpdatePresetsActiveState();
                 return;
             }
 
@@ -990,10 +994,40 @@ namespace EasyDNS.Forms
                 _lblCurrentPrimaryDns.Text = "Primary: Automatic (Router)";
                 _lblCurrentSecondaryDns.Text = "Secondary: None";
             }
+
+            UpdatePresetsActiveState();
+        }
+
+        private void UpdatePresetsActiveState()
+        {
+            string currentPrimary = (_selectedAdapter != null && _selectedAdapter.DnsServers.Count > 0)
+                ? _selectedAdapter.DnsServers[0]
+                : null;
+
+            var all = _presetRepo.GetAllPresets();
+            foreach (var preset in all)
+            {
+                preset.IsActive = (!string.IsNullOrEmpty(currentPrimary) &&
+                                   string.Equals(preset.PrimaryDns, currentPrimary, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (_presetsScrollPanel != null && _presetsScrollPanel.ContentContainer != null)
+            {
+                foreach (Control ctrl in _presetsScrollPanel.ContentContainer.Controls)
+                {
+                    var card = ctrl as DnsPresetCardControl;
+                    if (card != null)
+                    {
+                        card.Invalidate();
+                    }
+                }
+            }
         }
 
         private void RefreshPresetsList()
         {
+            UpdatePresetsActiveState();
+
             _presetsScrollPanel.ContentContainer.SuspendLayout();
             _presetsScrollPanel.ContentContainer.Controls.Clear();
             _presetsScrollPanel.ResetScroll();
@@ -1048,6 +1082,7 @@ namespace EasyDNS.Forms
                 {
                     _txtPrimaryDns.Text = target.PrimaryDns;
                     _txtSecondaryDns.Text = target.SecondaryDns ?? "";
+                    _lastAppliedPreset = target;
                     LogMessage("Loaded " + target.Name + " into inputs.");
                 };
 
@@ -1078,12 +1113,26 @@ namespace EasyDNS.Forms
 
         private async Task BenchmarkAllPresetsAsync()
         {
-            if (_isBenchmarkingAll) return;
-            _isBenchmarkingAll = true;
-            _btnBenchmarkAll.Enabled = false;
-            _btnBenchmarkAll.Text = "Ping...";
+            if (_isBenchmarkingAll)
+            {
+                if (_benchmarkCts != null)
+                {
+                    _benchmarkCts.Cancel();
+                    LogMessage("Cancelling latency benchmark...");
+                }
+                return;
+            }
 
-            LogMessage("Starting parallel latency benchmark across all DNS servers...");
+            _isBenchmarkingAll = true;
+            _benchmarkCts = new CancellationTokenSource();
+            var ct = _benchmarkCts.Token;
+
+            _btnBenchmarkAll.Text = "Cancel";
+            _btnBenchmarkAll.NormalColor = Theme.AccentDanger;
+            _btnBenchmarkAll.HoverColor = Theme.AccentDangerHover;
+            _btnBenchmarkAll.Invalidate();
+
+            LogMessage("Starting latency benchmark (UDP DNS query with ICMP fallback, concurrency: 5)...");
 
             var presets = _presetRepo.GetAllPresets();
             foreach (Control ctrl in _presetsScrollPanel.ContentContainer.Controls)
@@ -1096,33 +1145,55 @@ namespace EasyDNS.Forms
                 }
             }
 
-            await _benchmarkService.BenchmarkAllAsync(presets, delegate(DnsPreset p, LatencyResult res)
+            try
+            {
+                await _benchmarkService.BenchmarkAllAsync(presets, delegate(DnsPreset p, LatencyResult res)
+                {
+                    foreach (Control ctrl in _presetsScrollPanel.ContentContainer.Controls)
+                    {
+                        var card = ctrl as DnsPresetCardControl;
+                        if (card != null && card.Preset.Id == p.Id)
+                        {
+                            card.UpdateLatencyView();
+                            break;
+                        }
+                    }
+                }, ct);
+            }
+            catch (OperationCanceledException) { }
+            finally
             {
                 foreach (Control ctrl in _presetsScrollPanel.ContentContainer.Controls)
                 {
                     var card = ctrl as DnsPresetCardControl;
-                    if (card != null && card.Preset.Id == p.Id)
+                    if (card != null)
                     {
+                        card.Preset.IsCheckingLatency = false;
                         card.UpdateLatencyView();
-                        break;
                     }
                 }
-            });
 
-            foreach (Control ctrl in _presetsScrollPanel.ContentContainer.Controls)
-            {
-                var card = ctrl as DnsPresetCardControl;
-                if (card != null)
+                _isBenchmarkingAll = false;
+                if (_benchmarkCts != null)
                 {
-                    card.Preset.IsCheckingLatency = false;
-                    card.UpdateLatencyView();
+                    _benchmarkCts.Dispose();
+                    _benchmarkCts = null;
+                }
+
+                _btnBenchmarkAll.Text = "Ping All";
+                _btnBenchmarkAll.NormalColor = Theme.AccentPrimary;
+                _btnBenchmarkAll.HoverColor = Theme.AccentPrimaryHover;
+                _btnBenchmarkAll.Invalidate();
+
+                if (ct.IsCancellationRequested)
+                {
+                    LogMessage("Benchmark cancelled by user.");
+                }
+                else
+                {
+                    LogMessage("Benchmark completed.");
                 }
             }
-
-            _isBenchmarkingAll = false;
-            _btnBenchmarkAll.Enabled = true;
-            _btnBenchmarkAll.Text = "Ping All";
-            LogMessage("Benchmark completed.");
         }
 
         private async Task SelectFastestDnsAsync()
@@ -1139,6 +1210,7 @@ namespace EasyDNS.Forms
             {
                 _txtPrimaryDns.Text = fastest.PrimaryDns;
                 _txtSecondaryDns.Text = fastest.SecondaryDns ?? "";
+                _lastAppliedPreset = fastest;
 
                 string msg = string.Format("Fastest DNS: {0} ({1} ms)\n\nWould you like to apply it now to '{2}'?",
                     fastest.Name, fastest.LatencyMs.Value, _selectedAdapter != null ? _selectedAdapter.Name : "Selected Adapter");
@@ -1172,7 +1244,7 @@ namespace EasyDNS.Forms
             {
                 _lblCurrentLatency.Text = "● Latency: " + result.RoundtripTimeMs + " ms";
                 _lblCurrentLatency.ForeColor = Theme.GetLatencyColor(result.RoundtripTimeMs);
-                LogMessage("Current DNS (" + target + ") latency: " + result.RoundtripTimeMs + " ms");
+                LogMessage("Current DNS (" + target + ") latency: " + result.RoundtripTimeMs + " ms [" + result.Protocol + "]");
             }
             else
             {
@@ -1187,6 +1259,7 @@ namespace EasyDNS.Forms
         private void ApplyPreset(DnsPreset preset)
         {
             if (preset == null) return;
+            _lastAppliedPreset = preset;
             _txtPrimaryDns.Text = preset.PrimaryDns;
             _txtSecondaryDns.Text = preset.SecondaryDns ?? "";
             ApplyDnsFromInputs();
@@ -1225,6 +1298,20 @@ namespace EasyDNS.Forms
             if (success)
             {
                 LogMessage("OK: " + resultMsg);
+
+                // If on Windows 11 and a known preset with DoH was applied, configure native DoH encryption
+                if (_lastAppliedPreset != null &&
+                    string.Equals(_lastAppliedPreset.PrimaryDns, primary, StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrEmpty(_lastAppliedPreset.DohTemplate) &&
+                    DnsManagerService.IsWindows11OrGreater())
+                {
+                    string dohMsg;
+                    if (_dnsManager.ConfigureDoH(_selectedAdapter, primary, _lastAppliedPreset.DohTemplate, out dohMsg))
+                    {
+                        LogMessage("DoH: " + dohMsg);
+                    }
+                }
+
                 LoadAdapters();
             }
             else
