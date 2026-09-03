@@ -907,11 +907,11 @@ namespace EasyDNS.UI
             if (name.StartsWith("NEXTDNS")) return "nextdns";
             if (name.StartsWith("SHECAN")) return "shecan";
             if (name.StartsWith("ELECTRO")) return "electro";
-            if (name.StartsWith("403")) return "custom";
-            if (name.StartsWith("RADAR")) return "custom";
+            if (name.StartsWith("403")) return "403";
+            if (name.StartsWith("RADAR")) return "radar";
             if (name.StartsWith("LEVEL3")) return "level3";
             if (name.StartsWith("COMODO")) return "comodo";
-            if (name.StartsWith("DNS.WATCH")) return "custom";
+            if (name.StartsWith("DNS.WATCH")) return "dnswatch";
             return "custom";
         }
 
@@ -998,6 +998,9 @@ namespace EasyDNS.UI
             if (key == "nextdns") return Color.FromArgb(99, 102, 241);
             if (key == "shecan") return Color.FromArgb(245, 158, 11);
             if (key == "electro") return Color.FromArgb(168, 85, 247);
+            if (key == "403") return Color.FromArgb(6, 182, 212);
+            if (key == "radar") return Color.FromArgb(16, 185, 129);
+            if (key == "dnswatch") return Color.FromArgb(20, 184, 166);
             if (key == "level3") return Color.FromArgb(14, 165, 233);
             if (key == "comodo") return Color.FromArgb(239, 68, 68);
             if (key == "custom") return Color.FromArgb(168, 85, 247);
