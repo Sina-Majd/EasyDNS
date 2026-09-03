@@ -25,6 +25,7 @@
   <ItemGroup>
     <EmbeddedResource Include="app.ico" />
     <EmbeddedResource Include="Resources\app_logo.jpg" />
+    <EmbeddedResource Include="Resources\reload.png" />
     <EmbeddedResource Include="Resources\Logos\*.png" />
   </ItemGroup>
 

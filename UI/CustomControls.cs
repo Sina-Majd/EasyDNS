@@ -167,10 +167,30 @@ namespace EasyDNS.UI
 
     public class ModernRefreshButton : Control
     {
+        private static Image _reloadIcon;
         private bool _isHovered;
         private bool _isPressed;
         private float _rotationAngle = 0f;
         private Timer _spinTimer;
+
+        static ModernRefreshButton()
+        {
+            try
+            {
+                var asm = System.Reflection.Assembly.GetExecutingAssembly();
+                var stream = asm.GetManifestResourceStream("EasyDNS.Resources.reload.png")
+                          ?? asm.GetManifestResourceStream("EasyDNS.reload.png");
+                if (stream != null)
+                {
+                    _reloadIcon = Image.FromStream(stream);
+                }
+                else if (System.IO.File.Exists("Resources\\reload.png"))
+                {
+                    _reloadIcon = Image.FromFile("Resources\\reload.png");
+                }
+            }
+            catch { }
+        }
 
         public ModernRefreshButton()
         {
@@ -257,7 +277,7 @@ namespace EasyDNS.UI
         {
             var g = e.Graphics;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            g.PixelOffsetMode = PixelOffsetMode.Default;
 
             Color parentBg = Theme.TitleBarBackground;
             if (Parent != null && Parent.BackColor != Color.Transparent) parentBg = Parent.BackColor;
@@ -269,56 +289,53 @@ namespace EasyDNS.UI
 
             var bounds = new Rectangle(0, 0, Width - 1, Height - 1);
             Color fill = _isPressed ? Color.FromArgb(40, 45, 65) : (_isHovered ? Theme.CardHover : Theme.InputBackground);
-            Color border = _isHovered ? Theme.BorderHighlight : Theme.BorderColor;
+            Color border = (_isHovered || _isPressed) ? Theme.BorderHighlight : Theme.BorderColor;
 
-            using (var path = Theme.CreateRoundedRectangle(bounds, 5))
+            using (var path = Theme.CreateRoundedRectangle(bounds, 6))
             {
                 using (var brush = new SolidBrush(fill))
                 {
                     g.FillPath(brush, path);
                 }
-                using (var pen = new Pen(border, 1))
+                using (var pen = new Pen(border, (_isHovered || _isPressed) ? 1.5f : 1f))
                 {
+                    pen.Alignment = PenAlignment.Inset;
                     g.DrawPath(pen, path);
                 }
             }
 
             float cx = Width / 2f;
             float cy = Height / 2f;
-            float r = 5.2f;
-            Color iconColor = _isHovered ? Theme.TextPrimary : Theme.TextSecondary;
 
-            var state = g.Save();
-            g.TranslateTransform(cx, cy);
-            if (_rotationAngle != 0f)
+            if (_reloadIcon != null)
             {
-                g.RotateTransform(_rotationAngle);
+                var state = g.Save();
+                g.TranslateTransform(cx, cy);
+                if (_rotationAngle != 0f)
+                {
+                    g.RotateTransform(_rotationAngle);
+                }
+
+                int iconSize = 14;
+                var destRect = new Rectangle(-iconSize / 2, -iconSize / 2, iconSize, iconSize);
+
+                float alpha = _isHovered ? 1.0f : 0.75f;
+                var cm = new System.Drawing.Imaging.ColorMatrix(new float[][] {
+                    new float[] { 1, 0, 0, 0, 0 },
+                    new float[] { 0, 1, 0, 0, 0 },
+                    new float[] { 0, 0, 1, 0, 0 },
+                    new float[] { 0, 0, 0, alpha, 0 },
+                    new float[] { 0, 0, 0, 0, 1 }
+                });
+                using (var ia = new System.Drawing.Imaging.ImageAttributes())
+                {
+                    ia.SetColorMatrix(cm);
+                    g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                    g.DrawImage(_reloadIcon, destRect, 0, 0, _reloadIcon.Width, _reloadIcon.Height, GraphicsUnit.Pixel, ia);
+                }
+
+                g.Restore(state);
             }
-
-            using (var pen = new Pen(iconColor, 1.45f))
-            {
-                pen.StartCap = LineCap.Round;
-                pen.EndCap = LineCap.Round;
-                pen.LineJoin = LineJoin.Round;
-
-                // Dual arc circular sync icon
-                g.DrawArc(pen, -r, -r, r * 2, r * 2, 210, 125);
-                g.DrawArc(pen, -r, -r, r * 2, r * 2, 30, 125);
-
-                // Arrow 1 at 335 deg (top right)
-                float ax1 = (float)(r * Math.Cos(335 * Math.PI / 180));
-                float ay1 = (float)(r * Math.Sin(335 * Math.PI / 180));
-                g.DrawLine(pen, ax1, ay1, ax1 + 2.8f, ay1 - 1.2f);
-                g.DrawLine(pen, ax1, ay1, ax1 - 1.2f, ay1 - 2.8f);
-
-                // Arrow 2 at 155 deg (bottom left)
-                float ax2 = (float)(r * Math.Cos(155 * Math.PI / 180));
-                float ay2 = (float)(r * Math.Sin(155 * Math.PI / 180));
-                g.DrawLine(pen, ax2, ay2, ax2 - 2.8f, ay2 + 1.2f);
-                g.DrawLine(pen, ax2, ay2, ax2 + 1.2f, ay2 + 2.8f);
-            }
-
-            g.Restore(state);
         }
     }
 
