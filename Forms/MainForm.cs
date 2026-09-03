@@ -102,6 +102,8 @@ namespace EasyDNS.Forms
         private ModernButton _btnSwapDns;
         private ModernButton _btnClearDns;
         private ModernButton _btnSaveCustomPreset;
+        private ModernButton _btnExportCustomPresets;
+        private ModernButton _btnImportCustomPresets;
 
         private ModernCard _cardActions;
         private ModernButton _btnApplyDns;
@@ -111,6 +113,9 @@ namespace EasyDNS.Forms
         private ModernCard _cardLogs;
         private DarkLogConsole _darkLogConsole;
         private ModernButton _btnClearLogs;
+
+        private NotifyIcon _trayIcon;
+        private ContextMenuStrip _trayMenu;
 
         public MainForm()
         {
@@ -124,18 +129,30 @@ namespace EasyDNS.Forms
             ConfigureFormWindow();
             BuildCustomUi();
             LoadAdapters();
+            InitializeSystemTray();
             LogMessage("EasyDNS initialized successfully.");
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            RefreshPresetsList();
+            PopulatePresetCards();
             AdjustPresetCardsWidth();
             if (_presetsScrollPanel != null)
             {
                 _presetsScrollPanel.RecalculateContentHeight();
             }
+        }
+
+        protected override void OnFormClosing(FormClosingEventArgs e)
+        {
+            if (_trayIcon != null)
+            {
+                _trayIcon.Visible = false;
+                _trayIcon.Dispose();
+                _trayIcon = null;
+            }
+            base.OnFormClosing(e);
         }
 
         private void LoadAppResources()
@@ -433,7 +450,16 @@ namespace EasyDNS.Forms
                 Dock = DockStyle.Right,
                 Width = 46
             };
-            _btnClose.Click += delegate(object s, EventArgs e) { Close(); };
+            _btnClose.Click += delegate(object s, EventArgs e) 
+            { 
+                if (_trayIcon != null)
+                {
+                    _trayIcon.Visible = false;
+                    _trayIcon.Dispose();
+                    _trayIcon = null;
+                }
+                Application.Exit(); 
+            };
 
             _btnMaximize = new WindowControlButton(WindowControlButton.ButtonType.Maximize)
             {
@@ -462,7 +488,15 @@ namespace EasyDNS.Forms
                 Dock = DockStyle.Right,
                 Width = 46
             };
-            _btnMinimize.Click += delegate(object s, EventArgs e) { WindowState = FormWindowState.Minimized; };
+            _btnMinimize.Click += delegate(object s, EventArgs e) 
+            { 
+                WindowState = FormWindowState.Minimized; 
+                Hide();
+                if (_trayIcon != null)
+                {
+                    _trayIcon.ShowBalloonTip(1500, "EasyDNS", "EasyDNS is running in system tray. Double-click icon to restore.", ToolTipIcon.Info);
+                }
+            };
 
             _titleBar.Controls.Add(_picLogo);
             _titleBar.Controls.Add(_lblAppTitle);
@@ -495,7 +529,7 @@ namespace EasyDNS.Forms
             _txtSearch.InnerTextBox.TextChanged += delegate(object s, EventArgs e)
             {
                 _searchQuery = _txtSearch.Text.Trim();
-                RefreshPresetsList();
+                FilterPresetCards();
             };
 
             _btnBenchmarkAll = new ModernButton
@@ -528,7 +562,7 @@ namespace EasyDNS.Forms
             topBar.Controls.Add(_btnBenchmarkAll);
             topBar.Controls.Add(_btnFastestDns);
 
-            // Category Filter Pills Bar
+            // Category Filter Pills Bar (Max 3 categories + All)
             _panelCategories = new FlowLayoutPanel
             {
                 Dock = DockStyle.Top,
@@ -562,14 +596,12 @@ namespace EasyDNS.Forms
             _panelCategories.Controls.Clear();
             var categories = _presetRepo.GetCategories();
 
-            int[] widths = new int[] { 100, 135, 115 };
-            int i = 0;
-
             foreach (var cat in categories)
             {
                 string categoryName = cat;
                 bool isSelected = (categoryName == _selectedCategory);
-                int btnW = (i < widths.Length) ? widths[i] : 100;
+                int textW = TextRenderer.MeasureText(categoryName, Theme.SmallFont).Width;
+                int btnW = Math.Max(72, textW + 24);
 
                 var btn = new ModernButton
                 {
@@ -589,11 +621,10 @@ namespace EasyDNS.Forms
                 {
                     _selectedCategory = categoryName;
                     BuildCategoryButtons();
-                    RefreshPresetsList();
+                    FilterPresetCards();
                 };
 
                 _panelCategories.Controls.Add(btn);
-                i++;
             }
         }
 
@@ -742,7 +773,7 @@ namespace EasyDNS.Forms
                 CustomBorderColor = Theme.BorderColor,
                 BorderThickness = 1,
                 BorderRadius = 5,
-                Size = new Size(62, 25),
+                Size = new Size(58, 25),
                 Location = new Point(15, 92)
             };
             _btnSwapDns.Click += delegate(object s, EventArgs e)
@@ -761,8 +792,8 @@ namespace EasyDNS.Forms
                 CustomBorderColor = Theme.BorderColor,
                 BorderThickness = 1,
                 BorderRadius = 5,
-                Size = new Size(62, 25),
-                Location = new Point(83, 92)
+                Size = new Size(54, 25),
+                Location = new Point(77, 92)
             };
             _btnClearDns.Click += delegate(object s, EventArgs e)
             {
@@ -779,10 +810,83 @@ namespace EasyDNS.Forms
                 CustomBorderColor = Theme.BorderColor,
                 BorderThickness = 1,
                 BorderRadius = 5,
-                Size = new Size(95, 25),
-                Location = new Point(151, 92)
+                Size = new Size(88, 25),
+                Location = new Point(135, 92)
             };
             _btnSaveCustomPreset.Click += delegate(object s, EventArgs e) { SaveCustomPreset(); };
+
+            _btnExportCustomPresets = new ModernButton
+            {
+                Text = "Export",
+                Font = Theme.SmallFont,
+                NormalColor = Theme.InputBackground,
+                HoverColor = Theme.CardHover,
+                CustomBorderColor = Theme.BorderColor,
+                BorderThickness = 1,
+                BorderRadius = 5,
+                Size = new Size(58, 25),
+                Location = new Point(227, 92)
+            };
+            _btnExportCustomPresets.Click += delegate(object s, EventArgs e)
+            {
+                using (var sfd = new SaveFileDialog())
+                {
+                    sfd.Title = "Export Custom DNS Presets";
+                    sfd.Filter = "XML Presets (*.xml)|*.xml";
+                    sfd.FileName = "EasyDNS_Presets.xml";
+                    if (sfd.ShowDialog() == DialogResult.OK)
+                    {
+                        string msg;
+                        if (_presetRepo.ExportCustomPresets(sfd.FileName, out msg))
+                        {
+                            LogMessage("Export: " + msg);
+                            MessageBox.Show(msg, "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            LogMessage("Export: " + msg);
+                            MessageBox.Show(msg, "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                    }
+                }
+            };
+
+            _btnImportCustomPresets = new ModernButton
+            {
+                Text = "Import",
+                Font = Theme.SmallFont,
+                NormalColor = Theme.InputBackground,
+                HoverColor = Theme.CardHover,
+                CustomBorderColor = Theme.BorderColor,
+                BorderThickness = 1,
+                BorderRadius = 5,
+                Size = new Size(58, 25),
+                Location = new Point(289, 92)
+            };
+            _btnImportCustomPresets.Click += delegate(object s, EventArgs e)
+            {
+                using (var ofd = new OpenFileDialog())
+                {
+                    ofd.Title = "Import Custom DNS Presets";
+                    ofd.Filter = "XML Presets (*.xml)|*.xml";
+                    if (ofd.ShowDialog() == DialogResult.OK)
+                    {
+                        string msg;
+                        int count;
+                        if (_presetRepo.ImportCustomPresets(ofd.FileName, out msg, out count))
+                        {
+                            LogMessage("Import: " + msg);
+                            PopulatePresetCards();
+                            MessageBox.Show(msg, "Import Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        else
+                        {
+                            LogMessage("Import: " + msg);
+                            MessageBox.Show(msg, "Import", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        }
+                    }
+                }
+            };
 
             _cardCustomDns.Controls.Add(lblCustomTitle);
             _cardCustomDns.Controls.Add(lblPrimaryPrompt);
@@ -792,6 +896,8 @@ namespace EasyDNS.Forms
             _cardCustomDns.Controls.Add(_btnSwapDns);
             _cardCustomDns.Controls.Add(_btnClearDns);
             _cardCustomDns.Controls.Add(_btnSaveCustomPreset);
+            _cardCustomDns.Controls.Add(_btnExportCustomPresets);
+            _cardCustomDns.Controls.Add(_btnImportCustomPresets);
 
             // 3. Action Buttons Card (Responsive Auto-Layout)
             _cardActions = new ModernCard
@@ -1024,7 +1130,7 @@ namespace EasyDNS.Forms
             }
         }
 
-        private void RefreshPresetsList()
+        private void PopulatePresetCards()
         {
             UpdatePresetsActiveState();
 
@@ -1033,31 +1139,10 @@ namespace EasyDNS.Forms
             _presetsScrollPanel.ResetScroll();
 
             var all = _presetRepo.GetAllPresets();
-            var filtered = all.Where(delegate(DnsPreset p)
-            {
-                if (_selectedCategory != "All")
-                {
-                    if (_selectedCategory == "Universal" && p.Category != "Universal" && !p.IsCustom) return false;
-                    if (_selectedCategory == "Persian" && p.Category != "Persian") return false;
-                    if (_selectedCategory != "Universal" && _selectedCategory != "Persian" && p.Category != _selectedCategory) return false;
-                }
-
-                if (!string.IsNullOrEmpty(_searchQuery))
-                {
-                    string q = _searchQuery.ToLowerInvariant();
-                    bool nameMatch = (p.Name != null && p.Name.ToLowerInvariant().Contains(q));
-                    bool ipMatch = (p.PrimaryDns != null && p.PrimaryDns.Contains(q)) || (p.SecondaryDns != null && p.SecondaryDns.Contains(q));
-                    bool descMatch = (p.Description != null && p.Description.ToLowerInvariant().Contains(q));
-                    return nameMatch || ipMatch || descMatch;
-                }
-
-                return true;
-            }).ToList();
-
             int cardWidth = Math.Max(260, _presetsScrollPanel.ContentContainer.Width - 4);
             int yPos = 2;
 
-            foreach (var preset in filtered)
+            foreach (var preset in all)
             {
                 var card = new DnsPresetCardControl(preset)
                 {
@@ -1091,7 +1176,7 @@ namespace EasyDNS.Forms
                     if (MessageBox.Show("Delete custom preset '" + target.Name + "'?", "EasyDNS", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         _presetRepo.DeleteCustomPreset(target.Id);
-                        RefreshPresetsList();
+                        PopulatePresetCards();
                         LogMessage("Deleted custom preset: " + target.Name);
                     }
                 };
@@ -1106,9 +1191,143 @@ namespace EasyDNS.Forms
             }
 
             _presetsScrollPanel.ContentContainer.ResumeLayout(true);
-            _presetsScrollPanel.RecalculateContentHeight();
             AdjustPresetCardsWidth();
+            FilterPresetCards();
+        }
+
+        private void FilterPresetCards()
+        {
+            _presetsScrollPanel.ContentContainer.SuspendLayout();
+            int cardWidth = Math.Max(260, _presetsScrollPanel.ContentContainer.Width - 4);
+            int yPos = 2;
+            string q = string.IsNullOrEmpty(_searchQuery) ? "" : _searchQuery.Trim().ToLowerInvariant();
+
+            foreach (Control ctrl in _presetsScrollPanel.ContentContainer.Controls)
+            {
+                var card = ctrl as DnsPresetCardControl;
+                if (card == null) continue;
+
+                var p = card.Preset;
+                bool catMatch = (_selectedCategory == "All") || 
+                                (!string.IsNullOrEmpty(p.Category) && p.Category.IndexOf(_selectedCategory, StringComparison.OrdinalIgnoreCase) >= 0);
+                bool searchMatch = string.IsNullOrEmpty(q) ||
+                                   (p.Name != null && p.Name.ToLowerInvariant().Contains(q)) ||
+                                   (p.PrimaryDns != null && p.PrimaryDns.Contains(q)) ||
+                                   (p.SecondaryDns != null && p.SecondaryDns.Contains(q)) ||
+                                   (p.Description != null && p.Description.ToLowerInvariant().Contains(q));
+
+                bool visible = catMatch && searchMatch;
+                card.Visible = visible;
+                if (visible)
+                {
+                    card.Location = new Point(0, yPos);
+                    card.Width = cardWidth;
+                    yPos += card.Height + 6;
+                }
+            }
+
+            _presetsScrollPanel.ContentContainer.ResumeLayout(true);
+            _presetsScrollPanel.RecalculateContentHeight();
             _presetsScrollPanel.Invalidate();
+        }
+
+        private void InitializeSystemTray()
+        {
+            try
+            {
+                _trayMenu = new ContextMenuStrip();
+                _trayMenu.BackColor = Theme.CardBackground;
+                _trayMenu.ForeColor = Theme.TextPrimary;
+                _trayMenu.Renderer = new DarkMenuRenderer();
+
+                var itemOpen = new ToolStripMenuItem("Open EasyDNS", null, delegate { RestoreFromTray(); })
+                {
+                    Font = Theme.BodyBoldFont,
+                    ForeColor = Theme.TextPrimary,
+                    BackColor = Theme.CardBackground
+                };
+                _trayMenu.Items.Add(itemOpen);
+
+                _trayMenu.Items.Add(new ToolStripSeparator());
+
+                var itemPresets = new ToolStripMenuItem("Quick Presets")
+                {
+                    ForeColor = Theme.TextPrimary,
+                    BackColor = Theme.CardBackground
+                };
+                itemPresets.DropDown.BackColor = Theme.CardBackground;
+                itemPresets.DropDown.ForeColor = Theme.TextPrimary;
+                itemPresets.DropDown.Renderer = new DarkMenuRenderer();
+
+                string[] quickNames = new string[] { "Cloudflare (1.1.1.1)", "Google Public DNS", "Shecan", "Electro DNS (Gaming)", "Radar Game" };
+                foreach (var qName in quickNames)
+                {
+                    var targetName = qName;
+                    var subItem = new ToolStripMenuItem(targetName, null, delegate
+                    {
+                        var p = _presetRepo.GetAllPresets().FirstOrDefault(delegate(DnsPreset pr) { return pr.Name == targetName; });
+                        if (p != null) ApplyPreset(p);
+                    })
+                    {
+                        ForeColor = Theme.TextPrimary,
+                        BackColor = Theme.CardBackground
+                    };
+                    itemPresets.DropDownItems.Add(subItem);
+                }
+                _trayMenu.Items.Add(itemPresets);
+
+                var itemDhcp = new ToolStripMenuItem("Restore Default (DHCP)", null, delegate { ResetToDhcp(); })
+                {
+                    ForeColor = Theme.TextPrimary,
+                    BackColor = Theme.CardBackground
+                };
+                var itemFlush = new ToolStripMenuItem("Flush DNS Cache", null, delegate { FlushDnsCache(); })
+                {
+                    ForeColor = Theme.TextPrimary,
+                    BackColor = Theme.CardBackground
+                };
+                _trayMenu.Items.Add(itemDhcp);
+                _trayMenu.Items.Add(itemFlush);
+
+                _trayMenu.Items.Add(new ToolStripSeparator());
+
+                var itemExit = new ToolStripMenuItem("Exit", null, delegate
+                {
+                    if (_trayIcon != null)
+                    {
+                        _trayIcon.Visible = false;
+                        _trayIcon.Dispose();
+                        _trayIcon = null;
+                    }
+                    Application.Exit();
+                })
+                {
+                    ForeColor = Theme.TextPrimary,
+                    BackColor = Theme.CardBackground
+                };
+                _trayMenu.Items.Add(itemExit);
+
+                _trayIcon = new NotifyIcon
+                {
+                    Icon = this.Icon,
+                    Text = "EasyDNS - Network DNS Utility",
+                    ContextMenuStrip = _trayMenu,
+                    Visible = true
+                };
+                _trayIcon.DoubleClick += delegate { RestoreFromTray(); };
+            }
+            catch { }
+        }
+
+        private void RestoreFromTray()
+        {
+            Show();
+            if (WindowState == FormWindowState.Minimized)
+            {
+                WindowState = FormWindowState.Normal;
+            }
+            BringToFront();
+            Activate();
         }
 
         private async Task BenchmarkAllPresetsAsync()
@@ -1380,7 +1599,7 @@ namespace EasyDNS.Forms
             if (string.IsNullOrWhiteSpace(presetName)) return;
 
             _presetRepo.AddCustomPreset(presetName.Trim(), primary, secondary, "Custom DNS preset saved by user.");
-            RefreshPresetsList();
+            PopulatePresetCards();
             LogMessage("Saved custom preset: " + presetName);
             MessageBox.Show("Preset '" + presetName + "' saved successfully!", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }

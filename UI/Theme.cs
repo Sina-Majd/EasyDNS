@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Windows.Forms;
 
 namespace EasyDNS.UI
 {
@@ -74,6 +75,49 @@ namespace EasyDNS.UI
             if (latencyMs.Value <= 45) return AccentSuccess;
             if (latencyMs.Value <= 100) return AccentWarning;
             return AccentDanger;
+        }
+    }
+
+    public class DarkColorTable : ProfessionalColorTable
+    {
+        public override Color ToolStripDropDownBackground { get { return Theme.CardBackground; } }
+        public override Color MenuBorder { get { return Theme.BorderColor; } }
+        public override Color MenuItemBorder { get { return Theme.BorderHighlight; } }
+        public override Color MenuItemSelected { get { return Theme.CardHover; } }
+        public override Color MenuItemSelectedGradientBegin { get { return Theme.CardHover; } }
+        public override Color MenuItemSelectedGradientEnd { get { return Theme.CardHover; } }
+        public override Color MenuStripGradientBegin { get { return Theme.CardBackground; } }
+        public override Color MenuStripGradientEnd { get { return Theme.CardBackground; } }
+        public override Color ImageMarginGradientBegin { get { return Theme.CardBackground; } }
+        public override Color ImageMarginGradientMiddle { get { return Theme.CardBackground; } }
+        public override Color ImageMarginGradientEnd { get { return Theme.CardBackground; } }
+        public override Color SeparatorDark { get { return Theme.BorderColor; } }
+        public override Color SeparatorLight { get { return Color.Transparent; } }
+    }
+
+    public class DarkMenuRenderer : ToolStripProfessionalRenderer
+    {
+        public DarkMenuRenderer() : base(new DarkColorTable()) { }
+
+        protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+        {
+            e.TextColor = (e.Item != null && e.Item.Selected) ? Color.White : Theme.TextPrimary;
+            base.OnRenderItemText(e);
+        }
+
+        protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e)
+        {
+            e.ArrowColor = Theme.TextSecondary;
+            base.OnRenderArrow(e);
+        }
+
+        protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
+        {
+            using (var pen = new Pen(Theme.BorderColor, 1))
+            {
+                int y = e.Item.Height / 2;
+                e.Graphics.DrawLine(pen, 28, y, e.Item.Width - 6, y);
+            }
         }
     }
 }
