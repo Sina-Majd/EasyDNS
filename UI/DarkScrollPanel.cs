@@ -5,11 +5,48 @@ using System.Windows.Forms;
 
 namespace EasyDNS.UI
 {
+    internal sealed class DarkScrollContentPanel : Panel
+    {
+        public DarkScrollContentPanel()
+        {
+            SetStyle(ControlStyles.UserPaint |
+                     ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.ResizeRedraw, true);
+            UpdateStyles();
+        }
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Style |= 0x02000000; // WS_CLIPCHILDREN
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs pevent)
+        {
+            // Do not paint background separately to prevent flicker
+        }
+
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            using (var brush = new SolidBrush(BackColor))
+            {
+                e.Graphics.FillRectangle(brush, e.ClipRectangle);
+            }
+            base.OnPaint(e);
+        }
+    }
+
     public class DarkScrollPanel : Panel, IMessageFilter
     {
         private int _scrollValue = 0;
         private int _maxScroll = 0;
-        private readonly Panel _contentContainer;
+        private readonly DarkScrollContentPanel _contentContainer;
 
         private const int WM_MOUSEWHEEL = 0x020A;
         private const int ScrollBarWidth = 8;
@@ -28,6 +65,22 @@ namespace EasyDNS.UI
             get { return _maxScroll; }
         }
 
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams cp = base.CreateParams;
+                cp.Style |= 0x02000000; // WS_CLIPCHILDREN
+                cp.ExStyle |= 0x02000000; // WS_EX_COMPOSITED
+                return cp;
+            }
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs pevent)
+        {
+            // Do not paint background separately to prevent flicker
+        }
+
         public DarkScrollPanel()
         {
             SetStyle(ControlStyles.UserPaint |
@@ -37,7 +90,7 @@ namespace EasyDNS.UI
             BackColor = Theme.BackgroundDark;
             Padding = new Padding(0);
 
-            _contentContainer = new Panel
+            _contentContainer = new DarkScrollContentPanel
             {
                 Location = new Point(0, 0),
                 BackColor = Theme.BackgroundDark,
@@ -158,6 +211,12 @@ namespace EasyDNS.UI
             SetScrollPosition(_scrollValue + delta);
         }
 
+        private void InvalidateScrollBar()
+        {
+            int trackX = Width - ScrollBarWidth - 8;
+            Invalidate(new Rectangle(Math.Max(0, trackX), 0, ScrollBarWidth + 8, Height));
+        }
+
         public void SetScrollPosition(int newPos)
         {
             if (newPos < 0) newPos = 0;
@@ -167,8 +226,9 @@ namespace EasyDNS.UI
             {
                 _scrollValue = newPos;
                 _contentContainer.Location = new Point(0, -_scrollValue);
-                _contentContainer.Invalidate();
                 Invalidate();
+                Update();
+                _contentContainer.Update();
             }
         }
 
@@ -219,7 +279,7 @@ namespace EasyDNS.UI
             if (isOver != _isThumbHovered)
             {
                 _isThumbHovered = isOver;
-                Invalidate();
+                InvalidateScrollBar();
             }
 
             if (_isDraggingThumb && _maxScroll > 0)
@@ -244,7 +304,7 @@ namespace EasyDNS.UI
             {
                 _isDraggingThumb = false;
                 Capture = false;
-                Invalidate();
+                InvalidateScrollBar();
             }
         }
 
@@ -256,7 +316,7 @@ namespace EasyDNS.UI
 
             using (var bgBrush = new SolidBrush(Theme.BackgroundDark))
             {
-                g.FillRectangle(bgBrush, ClientRectangle);
+                g.FillRectangle(bgBrush, e.ClipRectangle);
             }
 
             if (_maxScroll <= 0) return;

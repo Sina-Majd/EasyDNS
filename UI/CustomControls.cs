@@ -751,6 +751,11 @@ namespace EasyDNS.UI
             base.Dispose(disposing);
         }
 
+        protected override void OnPaintBackground(PaintEventArgs pevent)
+        {
+            // Do not paint background separately to prevent flicker
+        }
+
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
