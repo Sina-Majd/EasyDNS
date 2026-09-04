@@ -35,7 +35,7 @@ namespace EasyDNS
                 catch
                 {
                     // User declined UAC prompt
-                    MessageBox.Show("EasyDNS requires Administrator privileges to modify network and DNS settings.\nPlease allow the Administrator prompt to run.", "EasyDNS - Administrator Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    DarkMessageBox.Show("EasyDNS requires Administrator privileges to modify network and DNS settings.\nPlease allow the Administrator prompt to run.", "EasyDNS - Administrator Required", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
             }
@@ -46,7 +46,7 @@ namespace EasyDNS
             }
             catch (Exception ex)
             {
-                MessageBox.Show("An unexpected error occurred: " + ex.Message, "EasyDNS Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DarkMessageBox.Show("An unexpected error occurred: " + ex.Message, "EasyDNS Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

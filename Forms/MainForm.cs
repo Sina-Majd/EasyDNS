@@ -844,12 +844,12 @@ namespace EasyDNS.Forms
                         if (_presetRepo.ExportCustomPresets(sfd.FileName, out msg))
                         {
                             LogMessage("Export: " + msg);
-                            MessageBox.Show(msg, "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            DarkMessageBox.Show(this, msg, "Export Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                         else
                         {
                             LogMessage("Export: " + msg);
-                            MessageBox.Show(msg, "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            DarkMessageBox.Show(this, msg, "Export", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
@@ -881,12 +881,12 @@ namespace EasyDNS.Forms
                         {
                             LogMessage("Import: " + msg);
                             PopulatePresetCards();
-                            MessageBox.Show(msg, "Import Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                            DarkMessageBox.Show(this, msg, "Import Successful", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                         else
                         {
                             LogMessage("Import: " + msg);
-                            MessageBox.Show(msg, "Import", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            DarkMessageBox.Show(this, msg, "Import", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         }
                     }
                 }
@@ -1177,7 +1177,7 @@ namespace EasyDNS.Forms
 
                 card.OnDeleteClicked += delegate(DnsPreset target)
                 {
-                    if (MessageBox.Show("Delete custom preset '" + target.Name + "'?", "EasyDNS", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    if (DarkMessageBox.Show(this, "Delete custom preset '" + target.Name + "'?", "Delete Preset", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
                         _presetRepo.DeleteCustomPreset(target.Id);
                         PopulatePresetCards();
@@ -1438,14 +1438,14 @@ namespace EasyDNS.Forms
                 string msg = string.Format("Fastest DNS: {0} ({1} ms)\n\nWould you like to apply it now to '{2}'?",
                     fastest.Name, fastest.LatencyMs.Value, _selectedAdapter != null ? _selectedAdapter.Name : "Selected Adapter");
 
-                if (MessageBox.Show(msg, "Fastest DNS Found", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
+                if (DarkMessageBox.Show(this, msg, "Fastest DNS Found", MessageBoxButtons.YesNo, MessageBoxIcon.Information) == DialogResult.Yes)
                 {
                     ApplyPreset(fastest);
                 }
             }
             else
             {
-                MessageBox.Show("No responsive DNS servers were detected in the benchmark.", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                DarkMessageBox.Show(this, "No responsive DNS servers were detected in the benchmark.", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
@@ -1492,7 +1492,7 @@ namespace EasyDNS.Forms
         {
             if (_selectedAdapter == null)
             {
-                MessageBox.Show("Please select a valid network adapter first.", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                DarkMessageBox.Show(this, "Please select a valid network adapter first.", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1501,14 +1501,14 @@ namespace EasyDNS.Forms
 
             if (!DnsManagerService.IsValidIpv4(primary))
             {
-                MessageBox.Show("Please enter a valid Primary IPv4 DNS address (e.g. 1.1.1.1 or 8.8.8.8).", "Invalid IP", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                DarkMessageBox.Show(this, "Please enter a valid Primary IPv4 DNS address (e.g. 1.1.1.1 or 8.8.8.8).", "Invalid IP", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 _txtPrimaryDns.InnerTextBox.Focus();
                 return;
             }
 
             if (!string.IsNullOrEmpty(secondary) && !DnsManagerService.IsValidIpv4(secondary))
             {
-                MessageBox.Show("Please enter a valid Secondary IPv4 DNS address or leave it blank.", "Invalid IP", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                DarkMessageBox.Show(this, "Please enter a valid Secondary IPv4 DNS address or leave it blank.", "Invalid IP", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 _txtSecondaryDns.InnerTextBox.Focus();
                 return;
             }
@@ -1540,7 +1540,7 @@ namespace EasyDNS.Forms
             else
             {
                 LogMessage("FAIL: " + resultMsg);
-                MessageBox.Show(resultMsg, "EasyDNS Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DarkMessageBox.Show(this, resultMsg, "EasyDNS Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1548,7 +1548,7 @@ namespace EasyDNS.Forms
         {
             if (_selectedAdapter == null)
             {
-                MessageBox.Show("Please select a valid network adapter first.", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                DarkMessageBox.Show(this, "Please select a valid network adapter first.", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1567,7 +1567,7 @@ namespace EasyDNS.Forms
             else
             {
                 LogMessage("FAIL: " + resultMsg);
-                MessageBox.Show(resultMsg, "EasyDNS Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                DarkMessageBox.Show(this, resultMsg, "EasyDNS Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -1580,7 +1580,7 @@ namespace EasyDNS.Forms
             if (success)
             {
                 LogMessage("OK: " + msg);
-                MessageBox.Show("Windows DNS Resolver Cache successfully flushed.", "Flush DNS", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                DarkMessageBox.Show(this, "Windows DNS Resolver Cache successfully flushed.", "Flush DNS", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             else
             {
@@ -1595,7 +1595,7 @@ namespace EasyDNS.Forms
 
             if (!DnsManagerService.IsValidIpv4(primary))
             {
-                MessageBox.Show("Please enter a valid Primary IPv4 DNS to save preset.", "Invalid IP", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                DarkMessageBox.Show(this, "Please enter a valid Primary IPv4 DNS to save preset.", "Invalid IP", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -1605,7 +1605,7 @@ namespace EasyDNS.Forms
             _presetRepo.AddCustomPreset(presetName.Trim(), primary, secondary, "Custom DNS preset saved by user.");
             PopulatePresetCards();
             LogMessage("Saved custom preset: " + presetName);
-            MessageBox.Show("Preset '" + presetName + "' saved successfully!", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            DarkMessageBox.Show(this, "Preset '" + presetName + "' saved successfully!", "EasyDNS", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void LogMessage(string text)
