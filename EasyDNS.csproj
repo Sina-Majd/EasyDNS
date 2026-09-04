@@ -10,7 +10,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>EasyDNS</RootNamespace>
     <AssemblyName>EasyDNS</AssemblyName>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <NoWarn>$(NoWarn);CA1416;WFAC010</NoWarn>
