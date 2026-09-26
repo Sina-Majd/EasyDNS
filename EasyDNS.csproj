@@ -11,7 +11,9 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <RootNamespace>EasyDNS</RootNamespace>
     <AssemblyName>EasyDNS</AssemblyName>
-    <Version>2.1.0</Version>
+    <Version>3.0.0</Version>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <FileVersion>3.0.0.0</FileVersion>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <NoWarn>$(NoWarn);WFAC010;WFO0003</NoWarn>
     <DefaultItemExcludes>$(DefaultItemExcludes);EasyDNS.Tests\**</DefaultItemExcludes>
