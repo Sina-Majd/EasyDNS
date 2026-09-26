@@ -1,0 +1,136 @@
+<Window x:Class="EasyDNS.Views.PromptDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        MinWidth="440"
+        MaxWidth="500"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType">
+
+    <Border Background="{StaticResource BrushCardBackground}"
+            BorderBrush="#2D334A"
+            BorderThickness="1"
+            CornerRadius="10"
+            Margin="14"
+            UseLayoutRounding="True"
+            SnapsToDevicePixels="True"
+            RenderOptions.ClearTypeHint="Enabled"
+            TextOptions.TextFormattingMode="Display"
+            TextOptions.TextRenderingMode="ClearType">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28"
+                              Opacity="0.55"
+                              ShadowDepth="5"
+                              Color="Black" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Custom Title Bar -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource BrushTitleBarBackground}"
+                    CornerRadius="9,9,0,0"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="0,0,0,1"
+                    ClipToBounds="True"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Margin="14,0,0,0">
+                    <TextBlock x:Name="TxtTitle"
+                               Text="Save Custom Preset"
+                               Foreground="{StaticResource BrushTextPrimary}"
+                               FontFamily="Segoe UI"
+                               FontWeight="Bold"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+
+                    <Button Style="{StaticResource DialogCloseButton}"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Stretch"
+                            Click="BtnClose_Click">
+                        <Path Width="9" Height="9"
+                              Data="M 0,0 L 9,9 M 9,0 L 0,9"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.2"
+                              SnapsToDevicePixels="True" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Content Area with Edit Badge, Prompt & Input Field -->
+            <StackPanel Grid.Row="1" Margin="24,20,24,18">
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Modern Vector Pencil Badge -->
+                    <Border Width="42"
+                            Height="42"
+                            CornerRadius="8"
+                            Background="#1C1F36"
+                            BorderBrush="#3E4575"
+                            BorderThickness="1"
+                            VerticalAlignment="Center"
+                            Margin="0,0,14,0">
+                        <Canvas Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <Path Data="M 14,2 L 18,6 L 6,18 L 2,18 L 2,14 Z M 11.5,4.5 L 15.5,8.5"
+                                  Stroke="{StaticResource BrushAccentPrimaryHover}"
+                                  StrokeThickness="1.8"
+                                  StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" />
+                        </Canvas>
+                    </Border>
+
+                    <TextBlock x:Name="TxtPrompt"
+                               Grid.Column="1"
+                               Text="Enter a name for this custom DNS preset:"
+                               Foreground="{StaticResource BrushTextPrimary}"
+                               FontFamily="Segoe UI"
+                               FontSize="12.5"
+                               VerticalAlignment="Center" />
+                </Grid>
+
+                <TextBox x:Name="TxtInput"
+                         Style="{StaticResource ModernTextBox}"
+                         Height="32"
+                         Tag="Preset Name..."
+                         KeyDown="TxtInput_KeyDown" />
+            </StackPanel>
+
+            <!-- Bottom Actions Bar (Continuous card background with subtle divider) -->
+            <Border Grid.Row="2"
+                    Background="Transparent"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="0,1,0,0"
+                    Padding="20,12,20,14">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource ModernPrimaryButton}"
+                            Content="Save"
+                            Width="82"
+                            Height="30"
+                            Margin="0,0,8,0"
+                            Click="BtnSave_Click" />
+                    <Button Style="{StaticResource ModernSecondaryButton}"
+                            Content="Cancel"
+                            Width="82"
+                            Height="30"
+                            Click="BtnCancel_Click" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

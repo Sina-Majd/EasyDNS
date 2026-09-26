@@ -1,0 +1,841 @@
+<Window x:Class="EasyDNS.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:EasyDNS.ViewModels"
+        xmlns:models="clr-namespace:EasyDNS.Core.Models"
+        xmlns:local="clr-namespace:EasyDNS.Views"
+        Title="EasyDNS"
+        Width="1160"
+        Height="750"
+        MinWidth="1000"
+        MinHeight="640"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="False"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        Background="{StaticResource BrushBackgroundDark}">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="50"
+                      ResizeBorderThickness="6"
+                      GlassFrameThickness="0"
+                      CornerRadius="0" />
+    </WindowChrome.WindowChrome>
+
+    <Border BorderBrush="{StaticResource BrushBorder}"
+            BorderThickness="1"
+            Background="{StaticResource BrushBackgroundDark}">
+        <Grid Background="{StaticResource BrushBackgroundDark}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ============================================== -->
+        <!-- 1. CUSTOM TOP TITLE BAR (Height 50px)          -->
+        <!-- ============================================== -->
+        <Border Grid.Row="0"
+                Background="{StaticResource BrushTitleBarBackground}"
+                BorderBrush="{StaticResource BrushBorder}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <!-- Left: App Logo & Title -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Margin="14,0,0,0">
+                    <Image Source="pack://application:,,,/Resources/app_logo.png"
+                           Width="26"
+                           Height="26"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock Text="EasyDNS"
+                               Foreground="{StaticResource BrushTextPrimary}"
+                               FontFamily="Segoe UI"
+                               FontWeight="Bold"
+                               FontSize="13"
+                               VerticalAlignment="Center"
+                               Margin="10,0,0,0" />
+                </StackPanel>
+
+                <!-- Center: Adapter Selector Container -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <TextBlock Text="Adapter:"
+                               Foreground="{StaticResource BrushTextSecondary}"
+                               FontFamily="Segoe UI"
+                               FontSize="11.5"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
+
+                    <!-- Adapter ComboBox with Dark Style -->
+                    <ComboBox Style="{StaticResource ModernComboBox}"
+                              ItemsSource="{Binding Adapters}"
+                              SelectedItem="{Binding SelectedAdapter, Mode=TwoWay}"
+                              Width="320"
+                              Height="28">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <Ellipse Width="8"
+                                             Height="8"
+                                             VerticalAlignment="Center"
+                                             Margin="0,0,8,0"
+                                             SnapsToDevicePixels="True">
+                                        <Ellipse.Style>
+                                            <Style TargetType="{x:Type Ellipse}">
+                                                <Setter Property="Fill" Value="{StaticResource BrushAccentSuccess}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsOperational}" Value="False">
+                                                        <Setter Property="Fill" Value="{StaticResource BrushTextMuted}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Ellipse.Style>
+                                    </Ellipse>
+                                    <TextBlock Text="{Binding DisplayName}"
+                                               Foreground="{StaticResource BrushTextPrimary}"
+                                               FontSize="11.5"
+                                               FontFamily="Segoe UI"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding DisplayName}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+
+                    <!-- Reload Button with Official Icon and Spin Animation -->
+                    <Button Style="{StaticResource ModernSecondaryButton}"
+                            Command="{Binding RefreshAdaptersCommand}"
+                            ToolTip="Refresh Network Adapters"
+                            Width="28"
+                            Height="28"
+                            Margin="6,0,0,0"
+                            Padding="0">
+                        <Image Source="pack://application:,,,/Resources/reload.png"
+                               Width="14"
+                               Height="14"
+                               RenderTransformOrigin="0.5,0.5"
+                               RenderOptions.BitmapScalingMode="HighQuality">
+                            <Image.RenderTransform>
+                                <RotateTransform Angle="0" />
+                            </Image.RenderTransform>
+                            <Image.Style>
+                                <Style TargetType="{x:Type Image}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsRefreshingAdapters}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard x:Name="SpinStoryboard">
+                                                    <Storyboard RepeatBehavior="Forever">
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                         From="0"
+                                                                         To="360"
+                                                                         Duration="0:0:0.5" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <StopStoryboard BeginStoryboardName="SpinStoryboard" />
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Image.Style>
+                        </Image>
+                    </Button>
+                </StackPanel>
+
+                <!-- Right: Window Control Buttons (Min, Max, Close) -->
+                <StackPanel Orientation="Horizontal"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Stretch"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button Style="{StaticResource WindowControlButton}"
+                            Click="BtnMinimize_Click"
+                            ToolTip="Minimize">
+                        <Rectangle Width="10" Height="1.2"
+                                   Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                   SnapsToDevicePixels="True" />
+                    </Button>
+                    <Button x:Name="BtnMaximize"
+                            Style="{StaticResource WindowControlButton}"
+                            Click="BtnMaximize_Click"
+                            ToolTip="Maximize">
+                        <Grid Width="10" Height="10">
+                            <Path x:Name="GlyphMaximize"
+                                  Data="M 0.5,0.5 L 9.5,0.5 L 9.5,9.5 L 0.5,9.5 Z"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1"
+                                  SnapsToDevicePixels="True" />
+                            <Path x:Name="GlyphRestore"
+                                  Data="M 2.5,0.5 L 9.5,0.5 L 9.5,7.5 M 0.5,2.5 L 7.5,2.5 L 7.5,9.5 L 0.5,9.5 Z"
+                                  Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                                  StrokeThickness="1"
+                                  SnapsToDevicePixels="True"
+                                  Visibility="Collapsed" />
+                        </Grid>
+                    </Button>
+                    <Button Style="{StaticResource WindowCloseButton}"
+                            Click="BtnClose_Click"
+                            ToolTip="Close">
+                        <Path Width="10" Height="10"
+                              Data="M 0,0 L 10,10 M 10,0 L 0,10"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.2"
+                              SnapsToDevicePixels="True" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ============================================== -->
+        <!-- 2. MAIN WORKSPACE (55% / 45% Split View)       -->
+        <!-- ============================================== -->
+        <Grid Grid.Row="1" Margin="12,8,12,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="55*" MinWidth="480" />
+                <ColumnDefinition Width="45*" MinWidth="400" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ========================================== -->
+            <!-- LEFT PANEL: PRESET CARDS BROWSER           -->
+            <!-- ========================================== -->
+            <Grid Grid.Column="0" Margin="0,0,6,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="34" />
+                    <RowDefinition Height="34" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Search & Benchmark Bar -->
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox Style="{StaticResource ModernTextBox}"
+                             Text="{Binding SearchQuery, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="Search presets..."
+                             Height="28"
+                             VerticalAlignment="Center"
+                             Margin="0,0,8,0" />
+
+                    <Button Grid.Column="1"
+                            Style="{StaticResource ModernPrimaryButton}"
+                            Command="{Binding BenchmarkAllCommand}"
+                            Content="{Binding BenchmarkButtonText}"
+                            Background="{Binding BenchmarkButtonBrush}"
+                            Width="76"
+                            Height="28"
+                            FontSize="11"
+                            FontWeight="Bold"
+                            VerticalAlignment="Center"
+                            Margin="0,0,6,0" />
+
+                    <Button Grid.Column="2"
+                            Style="{StaticResource ModernSuccessButton}"
+                            Command="{Binding SelectFastestDnsCommand}"
+                            Content="Best DNS"
+                            Width="84"
+                            Height="28"
+                            FontSize="11"
+                            FontWeight="Bold"
+                            VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Category Filter Buttons Bar (Rounded Rectangles matching original) -->
+                <StackPanel Grid.Row="1"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center">
+                    <RadioButton Style="{StaticResource CategoryPillButton}"
+                                 Content="All"
+                                 Height="25"
+                                 MinWidth="54"
+                                 IsChecked="{Binding SelectedCategory, Converter={x:Static local:CategoryCheckedConverter.Instance}, ConverterParameter=All}"
+                                 Click="CategoryPill_Click"
+                                 Tag="All" />
+                    <RadioButton Style="{StaticResource CategoryPillButton}"
+                                 Content="General"
+                                 Height="25"
+                                 MinWidth="70"
+                                 IsChecked="{Binding SelectedCategory, Converter={x:Static local:CategoryCheckedConverter.Instance}, ConverterParameter=General}"
+                                 Click="CategoryPill_Click"
+                                 Tag="General" />
+                    <RadioButton Style="{StaticResource CategoryPillButton}"
+                                 Content="Security"
+                                 Height="25"
+                                 MinWidth="70"
+                                 IsChecked="{Binding SelectedCategory, Converter={x:Static local:CategoryCheckedConverter.Instance}, ConverterParameter=Security}"
+                                 Click="CategoryPill_Click"
+                                 Tag="Security" />
+                    <RadioButton Style="{StaticResource CategoryPillButton}"
+                                 Content="Gaming"
+                                 Height="25"
+                                 MinWidth="70"
+                                 IsChecked="{Binding SelectedCategory, Converter={x:Static local:CategoryCheckedConverter.Instance}, ConverterParameter=Gaming}"
+                                 Click="CategoryPill_Click"
+                                 Tag="Gaming" />
+                </StackPanel>
+
+                <!-- Presets Scrollable Cards List -->
+                <ScrollViewer Grid.Row="2"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled"
+                              Margin="0,4,0,0">
+                    <ItemsControl ItemsSource="{Binding FilteredPresets}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:PresetCardViewModel}">
+                                <!-- PRESET CARD (Height 88px, matching original) -->
+                                <Border Height="88"
+                                        Margin="0,0,6,6"
+                                        Padding="10,8"
+                                        CornerRadius="6"
+                                        Background="{StaticResource BrushCardBackground}"
+                                        BorderThickness="1">
+                                    <Border.Style>
+                                        <Style TargetType="{x:Type Border}">
+                                            <Setter Property="BorderBrush" Value="{StaticResource BrushBorder}" />
+                                            <Style.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter Property="BorderBrush" Value="#2E3650" />
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                    <Setter Property="BorderBrush" Value="{StaticResource BrushBorderHighlight}" />
+                                                    <Setter Property="Background" Value="{StaticResource BrushCardSelected}" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="42" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <!-- 1. Provider Logo / Initials Icon (Left) -->
+                                        <Border Grid.Column="0"
+                                                Width="36"
+                                                Height="36"
+                                                CornerRadius="7"
+                                                Background="{Binding AvatarBackground}"
+                                                BorderBrush="{Binding AvatarBorderBrush}"
+                                                BorderThickness="1"
+                                                HorizontalAlignment="Left"
+                                                VerticalAlignment="Center">
+                                            <Grid>
+                                                <Image Source="{Binding ProviderLogo}"
+                                                       Width="24"
+                                                       Height="24"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       RenderOptions.BitmapScalingMode="HighQuality" />
+                                                <TextBlock Text="{Binding ProviderInitials}"
+                                                           Foreground="{Binding AvatarBorderBrush}"
+                                                           FontFamily="Segoe UI"
+                                                           FontWeight="Bold"
+                                                           FontSize="12"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="{x:Type TextBlock}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding ProviderLogo}" Value="{x:Null}">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- 2. Middle Info: Title, Description, IPs -->
+                                        <Grid Grid.Column="1" Margin="8,0,8,0">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Row 1: Name -->
+                                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}"
+                                                           Foreground="{StaticResource BrushTextPrimary}"
+                                                           FontFamily="Segoe UI"
+                                                           FontWeight="Bold"
+                                                           FontSize="12.5" />
+                                                <!-- Active Badge -->
+                                                <Border Background="#1E3A8A"
+                                                        CornerRadius="4"
+                                                        Padding="5,1"
+                                                        Margin="6,0,0,0">
+                                                    <Border.Style>
+                                                        <Style TargetType="{x:Type Border}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="ACTIVE"
+                                                               Foreground="#93C5FD"
+                                                               FontSize="9"
+                                                               FontWeight="Bold" />
+                                                </Border>
+                                            </StackPanel>
+
+                                            <!-- Row 2: Description -->
+                                            <TextBlock Grid.Row="1"
+                                                       Text="{Binding Description}"
+                                                       Foreground="{StaticResource BrushTextSecondary}"
+                                                       FontFamily="Segoe UI"
+                                                       FontSize="11"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Margin="0,1,0,3" />
+
+                                            <!-- Row 3: IP Address Chips with Divider -->
+                                            <StackPanel Grid.Row="2"
+                                                        Orientation="Horizontal"
+                                                        VerticalAlignment="Bottom">
+                                                <Button Style="{StaticResource ModernSecondaryButton}"
+                                                        Command="{Binding CopyPrimaryIpCommand}"
+                                                        ToolTip="Click to copy Primary DNS IP"
+                                                        Padding="8,1"
+                                                        Height="22"
+                                                        FontSize="11"
+                                                        FontFamily="Consolas"
+                                                        Content="{Binding PrimaryDns}" />
+
+                                                <!-- Vertical Divider Bar -->
+                                                <Rectangle Width="1.5"
+                                                           Height="14"
+                                                           Margin="5,0,5,0"
+                                                           Fill="#46506E"
+                                                           VerticalAlignment="Center">
+                                                    <Rectangle.Style>
+                                                        <Style TargetType="{x:Type Rectangle}">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasSecondaryDns}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Rectangle.Style>
+                                                </Rectangle>
+
+                                                <Button Command="{Binding CopySecondaryIpCommand}"
+                                                        ToolTip="Click to copy Secondary DNS IP"
+                                                        Padding="8,1"
+                                                        Height="22"
+                                                        FontSize="11"
+                                                        FontFamily="Consolas"
+                                                        Content="{Binding SecondaryDns}">
+                                                    <Button.Style>
+                                                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ModernSecondaryButton}">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasSecondaryDns}" Value="False">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- 3. Right: Latency Badge (Top) + Buttons (Bottom) -->
+                                        <Grid Grid.Column="2">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+
+                                            <!-- Top Right: Latency Badge Pill -->
+                                            <Border Grid.Row="0"
+                                                    HorizontalAlignment="Right"
+                                                    CornerRadius="4"
+                                                    Background="{Binding LatencyBadgeBackground}"
+                                                    BorderBrush="{Binding LatencyBadgeBorderBrush}"
+                                                    BorderThickness="1"
+                                                    Padding="7,2"
+                                                    Height="18"
+                                                    VerticalAlignment="Top"
+                                                    Margin="0,0,0,0">
+                                                <TextBlock Text="{Binding LatencyDisplayText}"
+                                                           Foreground="{Binding LatencyBrush}"
+                                                           FontFamily="Segoe UI"
+                                                           FontSize="10"
+                                                           FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" />
+                                            </Border>
+
+                                            <!-- Bottom Right: Ping + Apply Buttons Side-by-Side -->
+                                            <StackPanel Grid.Row="1"
+                                                        Orientation="Horizontal"
+                                                        HorizontalAlignment="Right"
+                                                        VerticalAlignment="Bottom">
+                                                <Button Style="{StaticResource ModernSecondaryButton}"
+                                                        Command="{Binding TestLatencyCommand}"
+                                                        Content="Ping"
+                                                        Width="48"
+                                                        Height="25"
+                                                        FontSize="11"
+                                                        Margin="0,0,5,0" />
+
+                                                <Button Style="{StaticResource ModernPrimaryButton}"
+                                                        Command="{Binding ApplyCommand}"
+                                                        Content="Apply"
+                                                        Width="58"
+                                                        Height="25"
+                                                        FontSize="11"
+                                                        Margin="0,0,2,0" />
+
+                                                <Button Command="{Binding DeleteCommand}"
+                                                        ToolTip="Delete Custom Preset"
+                                                        Width="24"
+                                                        Height="25"
+                                                        Margin="2,0,0,0"
+                                                        Padding="0">
+                                                    <Button.Style>
+                                                        <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ModernDangerButton}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsCustom}" Value="True">
+                                                                    <Setter Property="Visibility" Value="Visible" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Button.Style>
+                                                    <TextBlock Text="✕" FontSize="11" />
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- ========================================== -->
+            <!-- RIGHT PANEL: CONFIG, CUSTOM & ACTIONS      -->
+            <!-- ========================================== -->
+            <Grid Grid.Column="1" Margin="6,0,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- CARD 1: CURRENT ACTIVE DNS (Height ~100) -->
+                <Border Grid.Row="0"
+                        Background="{StaticResource BrushCardBackground}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="14,10"
+                        Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Header & Latency -->
+                        <Grid Grid.Row="0" Margin="0,0,0,6">
+                            <TextBlock Text="Current Active DNS"
+                                       Foreground="{StaticResource BrushTextPrimary}"
+                                       FontFamily="Segoe UI"
+                                       FontWeight="Bold"
+                                       FontSize="12"
+                                       VerticalAlignment="Center" />
+
+                            <TextBlock Text="{Binding CurrentLatencyText}"
+                                       Foreground="{Binding CurrentLatencyBrush}"
+                                       FontFamily="Segoe UI"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" />
+                        </Grid>
+
+                        <!-- Primary, Secondary & Ping Now Button -->
+                        <Grid Grid.Row="1">
+                            <StackPanel HorizontalAlignment="Left" VerticalAlignment="Center">
+                                <TextBlock FontFamily="Segoe UI"
+                                           FontSize="12"
+                                           Margin="0,0,0,3">
+                                    <Run Text="Primary: " Foreground="{StaticResource BrushTextSecondary}" />
+                                    <Run Text="{Binding CurrentPrimaryDns}" Foreground="{StaticResource BrushAccentCyan}" FontWeight="Bold" />
+                                </TextBlock>
+                                <TextBlock FontFamily="Segoe UI"
+                                           FontSize="11.5">
+                                    <Run Text="Secondary: " Foreground="{StaticResource BrushTextSecondary}" />
+                                    <Run Text="{Binding CurrentSecondaryDns}" Foreground="{StaticResource BrushTextSecondary}" />
+                                </TextBlock>
+                            </StackPanel>
+
+                            <Button Style="{StaticResource ModernSecondaryButton}"
+                                    Command="{Binding TestCurrentDnsLatencyCommand}"
+                                    Content="Ping Now"
+                                    Width="82"
+                                    Height="25"
+                                    FontSize="11"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Bottom" />
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <!-- CARD 2: CUSTOM DNS CONFIGURATION (Height ~138) -->
+                <Border Grid.Row="1"
+                        Background="{StaticResource BrushCardBackground}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="14,10"
+                        Margin="0,0,0,10">
+                    <StackPanel>
+                        <TextBlock Text="Custom DNS Configuration"
+                                   Foreground="{StaticResource BrushTextPrimary}"
+                                   FontFamily="Segoe UI"
+                                   FontWeight="Bold"
+                                   FontSize="12"
+                                   Margin="0,0,0,8" />
+
+                        <!-- Two-Column Side-by-Side Inputs -->
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="14" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Primary Column -->
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Primary IPv4:"
+                                           Foreground="{StaticResource BrushTextSecondary}"
+                                           FontSize="11"
+                                           Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding InputPrimaryDns, UpdateSourceTrigger=PropertyChanged}"
+                                         Tag="1.1.1.1"
+                                         Height="30" />
+                            </StackPanel>
+
+                            <!-- Secondary Column -->
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Secondary IPv4:"
+                                           Foreground="{StaticResource BrushTextSecondary}"
+                                           FontSize="11"
+                                           Margin="0,0,0,4" />
+                                <TextBox Style="{StaticResource ModernTextBox}"
+                                         Text="{Binding InputSecondaryDns, UpdateSourceTrigger=PropertyChanged}"
+                                         Tag="1.0.0.1"
+                                         Height="30" />
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- Buttons Row: Swap, Clear, Save Preset, Export, Import -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="1.5*" />
+                                <ColumnDefinition Width="1.1*" />
+                                <ColumnDefinition Width="1.1*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0"
+                                    Style="{StaticResource ModernSecondaryButton}"
+                                    Command="{Binding SwapInputsCommand}"
+                                    Content="Swap"
+                                    Height="25"
+                                    FontSize="10.5"
+                                    Margin="0,0,3,0" />
+
+                            <Button Grid.Column="1"
+                                    Style="{StaticResource ModernSecondaryButton}"
+                                    Command="{Binding ClearInputsCommand}"
+                                    Content="Clear"
+                                    Height="25"
+                                    FontSize="10.5"
+                                    Margin="0,0,3,0" />
+
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource ModernSecondaryButton}"
+                                    Command="{Binding SaveCustomPresetCommand}"
+                                    Content="Save Preset"
+                                    Height="25"
+                                    FontSize="10.5"
+                                    Margin="0,0,3,0" />
+
+                            <Button Grid.Column="3"
+                                    Style="{StaticResource ModernSecondaryButton}"
+                                    Command="{Binding ExportPresetsCommand}"
+                                    Content="Export"
+                                    Height="25"
+                                    FontSize="10.5"
+                                    Margin="0,0,3,0" />
+
+                            <Button Grid.Column="4"
+                                    Style="{StaticResource ModernSecondaryButton}"
+                                    Command="{Binding ImportPresetsCommand}"
+                                    Content="Import"
+                                    Height="25"
+                                    FontSize="10.5" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- CARD 3: ACTION BUTTONS (Vibrant & High Contrast) -->
+                <Border Grid.Row="2"
+                        Background="{StaticResource BrushCardBackground}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="14,12"
+                        Margin="0,0,0,10">
+                    <StackPanel>
+                        <!-- Top Button: Apply DNS to Adapter (Height 36) -->
+                        <Button Style="{StaticResource ModernPrimaryButton}"
+                                Command="{Binding ApplyInputsDnsCommand}"
+                                Content="Apply DNS to Adapter"
+                                Height="36"
+                                FontSize="12.5"
+                                FontWeight="Bold"
+                                Margin="0,0,0,8" />
+
+                        <!-- Bottom Row: Reset to Default (Amber) & Flush DNS (Emerald) -->
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="8" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Button Grid.Column="0"
+                                    Style="{StaticResource ModernPrimaryButton}"
+                                    Command="{Binding ResetDhcpCommand}"
+                                    Content="Reset to Default"
+                                    Background="#D97706"
+                                    Height="34"
+                                    FontSize="11.5"
+                                    FontWeight="Bold" />
+
+                            <Button Grid.Column="2"
+                                    Style="{StaticResource ModernSuccessButton}"
+                                    Command="{Binding FlushDnsCommand}"
+                                    Content="Flush DNS Cache"
+                                    Background="#059669"
+                                    Height="34"
+                                    FontSize="11.5"
+                                    FontWeight="Bold" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- CARD 4: ACTIVITY LOG -->
+                <Border Grid.Row="3"
+                        Background="{StaticResource BrushCardBackground}"
+                        BorderBrush="{StaticResource BrushBorder}"
+                        BorderThickness="1"
+                        CornerRadius="6"
+                        Padding="12,10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Header & Clear Button -->
+                        <Grid Grid.Row="0" Margin="0,0,0,8">
+                            <TextBlock Text="Activity Log"
+                                       Foreground="{StaticResource BrushTextPrimary}"
+                                       FontFamily="Segoe UI"
+                                       FontWeight="Bold"
+                                       FontSize="12"
+                                       VerticalAlignment="Center" />
+
+                            <Button Style="{StaticResource ModernSecondaryButton}"
+                                    Command="{Binding ClearLogsCommand}"
+                                    Content="Clear"
+                                    Width="52"
+                                    Height="24"
+                                    FontSize="10.5"
+                                    HorizontalAlignment="Right" />
+                        </Grid>
+
+                        <!-- Darker Sunken Console Box -->
+                        <Border Grid.Row="1"
+                                Background="{StaticResource BrushInputBackground}"
+                                BorderBrush="{StaticResource BrushBorder}"
+                                BorderThickness="1"
+                                CornerRadius="5"
+                                Padding="8,6">
+                            <ScrollViewer x:Name="LogScrollViewer"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding Logger.Logs}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type models:LogEntry}">
+                                            <TextBlock FontFamily="Consolas"
+                                                       FontSize="11"
+                                                       LineHeight="16"
+                                                       Margin="0,1">
+                                                <Run Text="["
+                                                     Foreground="{StaticResource BrushTextMuted}" />
+                                                <Run Text="{Binding Timestamp, Mode=OneTime}"
+                                                     Foreground="{StaticResource BrushTextMuted}" />
+                                                <Run Text="]  "
+                                                     Foreground="{StaticResource BrushTextMuted}" />
+                                                <Run Text="{Binding Message, Mode=OneTime}">
+                                                    <Run.Style>
+                                                        <Style TargetType="{x:Type Run}">
+                                                            <Setter Property="Foreground" Value="{StaticResource BrushTextSecondary}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Success">
+                                                                    <Setter Property="Foreground" Value="{StaticResource BrushAccentSuccess}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Error">
+                                                                    <Setter Property="Foreground" Value="{StaticResource BrushAccentDanger}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Highlight">
+                                                                    <Setter Property="Foreground" Value="{StaticResource BrushAccentCyan}" />
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Level}" Value="Warning">
+                                                                    <Setter Property="Foreground" Value="{StaticResource BrushAccentWarning}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Run.Style>
+                                                </Run>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Border>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Border>
+</Window>

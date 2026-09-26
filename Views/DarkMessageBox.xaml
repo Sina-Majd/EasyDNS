@@ -1,0 +1,181 @@
+<Window x:Class="EasyDNS.Views.DarkMessageBox"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        MinWidth="420"
+        MaxWidth="560"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType">
+
+    <Border Background="{StaticResource BrushCardBackground}"
+            BorderBrush="#2D334A"
+            BorderThickness="1"
+            CornerRadius="10"
+            Margin="14"
+            UseLayoutRounding="True"
+            SnapsToDevicePixels="True"
+            RenderOptions.ClearTypeHint="Enabled"
+            TextOptions.TextFormattingMode="Display"
+            TextOptions.TextRenderingMode="ClearType">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="28"
+                              Opacity="0.55"
+                              ShadowDepth="5"
+                              Color="Black" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="38" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Custom Title Bar -->
+            <Border Grid.Row="0"
+                    Background="{StaticResource BrushTitleBarBackground}"
+                    CornerRadius="9,9,0,0"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="0,0,0,1"
+                    ClipToBounds="True"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <Grid Margin="14,0,0,0">
+                    <TextBlock x:Name="TxtTitle"
+                               Text="EasyDNS"
+                               Foreground="{StaticResource BrushTextPrimary}"
+                               FontFamily="Segoe UI"
+                               FontWeight="Bold"
+                               FontSize="12"
+                               VerticalAlignment="Center" />
+
+                    <Button Style="{StaticResource DialogCloseButton}"
+                            HorizontalAlignment="Right"
+                            VerticalAlignment="Stretch"
+                            Click="BtnClose_Click">
+                        <Path Width="9" Height="9"
+                              Data="M 0,0 L 9,9 M 9,0 L 0,9"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeThickness="1.2"
+                              SnapsToDevicePixels="True" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Content Area with Vector Icon Badge and Message -->
+            <Grid Grid.Row="1" Margin="24,20,24,18">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Modern Vector Icon Badge (42x42, CornerRadius 8) -->
+                <Border x:Name="IconBadge"
+                        Grid.Column="0"
+                        Width="42"
+                        Height="42"
+                        CornerRadius="8"
+                        Background="#1E2338"
+                        BorderBrush="#3D4566"
+                        BorderThickness="1"
+                        VerticalAlignment="Top"
+                        Margin="0,2,18,0">
+                    <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <!-- Warning Triangle Vector -->
+                        <Canvas x:Name="IconWarning" Width="22" Height="22" Visibility="Collapsed">
+                            <Path Data="M 11,2.5 L 1.5,19 C 1.1,19.8 1.7,20.8 2.6,20.8 L 19.4,20.8 C 20.3,20.8 20.9,19.8 20.5,19 L 11,2.5 Z"
+                                  Stroke="#F59E0B"
+                                  StrokeThickness="1.8"
+                                  StrokeLineJoin="Round" />
+                            <Line X1="11" Y1="8" X2="11" Y2="13.5"
+                                  Stroke="#F59E0B"
+                                  StrokeThickness="2"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" />
+                            <Ellipse Canvas.Left="9.8" Canvas.Top="16"
+                                     Width="2.4" Height="2.4"
+                                     Fill="#F59E0B" />
+                        </Canvas>
+
+                        <!-- Information / Success Checkmark Vector -->
+                        <Canvas x:Name="IconInfo" Width="22" Height="22" Visibility="Collapsed">
+                            <Path Data="M 3.5,11 L 8.5,16 L 18.5,6"
+                                  Stroke="#10B981"
+                                  StrokeThickness="2.4"
+                                  StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" />
+                        </Canvas>
+
+                        <!-- Error Vector Cross -->
+                        <Canvas x:Name="IconError" Width="22" Height="22" Visibility="Collapsed">
+                            <Path Data="M 4.5,4.5 L 17.5,17.5 M 17.5,4.5 L 4.5,17.5"
+                                  Stroke="#F43F5E"
+                                  StrokeThickness="2.4"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round" />
+                        </Canvas>
+
+                        <!-- Question Mark Vector -->
+                        <Canvas x:Name="IconQuestion" Width="22" Height="22" Visibility="Collapsed">
+                            <Path Data="M 6.5,7.5 C 6.5,5 8.5,3 11,3 C 13.5,3 15.5,5 15.5,7.5 C 15.5,9.5 14,10.5 12.5,11.5 C 11.5,12.2 11,13 11,14.5"
+                                  Stroke="#06B6D4"
+                                  StrokeThickness="2"
+                                  StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round" />
+                            <Ellipse Canvas.Left="9.8" Canvas.Top="17"
+                                     Width="2.4" Height="2.4"
+                                     Fill="#06B6D4" />
+                        </Canvas>
+                    </Grid>
+                </Border>
+
+                <!-- Message Text -->
+                <TextBlock x:Name="TxtMessage"
+                           Grid.Column="1"
+                           Text="Message content goes here."
+                           Foreground="{StaticResource BrushTextPrimary}"
+                           FontFamily="Segoe UI"
+                           FontSize="12.5"
+                           LineHeight="18"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center" />
+            </Grid>
+
+            <!-- Bottom Actions Bar (Continuous card background with subtle divider) -->
+            <Border Grid.Row="2"
+                    Background="Transparent"
+                    BorderBrush="{StaticResource BrushBorder}"
+                    BorderThickness="0,1,0,0"
+                    Padding="20,12,20,14">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnYes"
+                            Style="{StaticResource ModernPrimaryButton}"
+                            Content="Yes"
+                            Width="82"
+                            Height="30"
+                            Margin="0,0,8,0"
+                            Click="BtnYes_Click" />
+                    <Button x:Name="BtnNo"
+                            Style="{StaticResource ModernSecondaryButton}"
+                            Content="No"
+                            Width="82"
+                            Height="30"
+                            Click="BtnNo_Click" />
+                    <Button x:Name="BtnOk"
+                            Style="{StaticResource ModernPrimaryButton}"
+                            Content="OK"
+                            Width="82"
+                            Height="30"
+                            Click="BtnOk_Click" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
