@@ -16,8 +16,8 @@ if %ERRORLEVEL% NEQ 0 (
 if not exist "%~dp0bin" mkdir "%~dp0bin"
 if exist "%~dp0bin\Publish" rmdir /s /q "%~dp0bin\Publish"
 
-echo [*] Publishing Standalone Single-File Executable (.NET 8 Win-x64)...
-dotnet publish "%~dp0EasyDNS.csproj" -c Release -f net8.0-windows -r win-x64 -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -p:IncludeNativeLibrariesForSelfExtract=true --self-contained false -o "%~dp0bin\Publish" --nologo
+echo [*] Publishing Standalone Single-File Executable (.NET 10 Win-x64)...
+dotnet publish "%~dp0EasyDNS.csproj" -c Release -f net10.0-windows -r win-x64 -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -p:IncludeNativeLibrariesForSelfExtract=true --self-contained false -o "%~dp0bin\Publish" --nologo
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
