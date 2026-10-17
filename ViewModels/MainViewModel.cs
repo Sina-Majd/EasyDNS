@@ -242,6 +242,21 @@ namespace EasyDNS.ViewModels
             _ = ApplyInputsDnsAsync();
         }
 
+        public void ApplyPresetByName(string name)
+        {
+            var match = _allPresetViewModels.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))?.Preset
+                     ?? _presetRepo.GetAllPresets().FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+
+            if (match != null)
+            {
+                ApplyPreset(match);
+            }
+            else
+            {
+                Logger.LogWarning($"Preset '{name}' could not be found.");
+            }
+        }
+
         private void DeletePreset(DnsPreset preset)
         {
             var result = ShowMessageBox(

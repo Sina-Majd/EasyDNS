@@ -118,11 +118,7 @@ namespace EasyDNS.Views
                     var targetName = qName;
                     quickPresets.DropDownItems.Add(targetName, null, delegate
                     {
-                        var match = _viewModel.FilteredPresets.FirstOrDefault(p => p.Name == targetName);
-                        if (match != null)
-                        {
-                            _viewModel.ApplyPreset(match.Preset);
-                        }
+                        _viewModel.ApplyPresetByName(targetName);
                     });
                 }
                 contextMenu.Items.Add(quickPresets);
