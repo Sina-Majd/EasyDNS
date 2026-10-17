@@ -29,7 +29,7 @@ namespace EasyDNS
             {
                 if (args.ExceptionObject is Exception ex)
                 {
-                    DarkMessageBox.Show(null, $"Fatal error: {ex.Message}", "EasyDNS Fatal", MessageBoxButton.OK, MessageBoxImage.Error);
+                    HandleFatalException(ex);
                 }
             };
 
@@ -93,6 +93,47 @@ namespace EasyDNS
             {
                 return false;
             }
+        }
+
+        internal static Action<string, string>? FatalMessageBoxOverride { get; set; }
+
+        internal static void HandleFatalException(Exception ex)
+        {
+            Debug.WriteLine($"[FATAL] {ex}");
+
+            if (FatalMessageBoxOverride != null)
+            {
+                FatalMessageBoxOverride(ex.Message, "EasyDNS Fatal");
+                return;
+            }
+
+            if (Current?.Dispatcher != null && !Current.Dispatcher.HasShutdownStarted)
+            {
+                if (Current.Dispatcher.CheckAccess())
+                {
+                    DarkMessageBox.Show(null, $"Fatal error: {ex.Message}", "EasyDNS Fatal", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                try
+                {
+                    Current.Dispatcher.Invoke(() =>
+                    {
+                        DarkMessageBox.Show(null, $"Fatal error: {ex.Message}", "EasyDNS Fatal", MessageBoxButton.OK, MessageBoxImage.Error);
+                    });
+                    return;
+                }
+                catch
+                {
+                    // Fall through to WinForms MessageBox if dispatcher invocation fails
+                }
+            }
+
+            System.Windows.Forms.MessageBox.Show(
+                $"Fatal error: {ex.Message}",
+                "EasyDNS Fatal",
+                System.Windows.Forms.MessageBoxButtons.OK,
+                System.Windows.Forms.MessageBoxIcon.Error);
         }
     }
 }
