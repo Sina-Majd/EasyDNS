@@ -7,6 +7,8 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using EasyDNS.Core.Common;
 using EasyDNS.Core.Interfaces;
@@ -366,7 +368,8 @@ namespace EasyDNS.Infrastructure.Services
             if (!string.IsNullOrWhiteSpace(primaryIpv6)) serverArgs += $",\"{primaryIpv6.Trim()}\"";
             if (!string.IsNullOrWhiteSpace(secondaryIpv6)) serverArgs += $",\"{secondaryIpv6.Trim()}\"";
 
-            string psScript = $"Set-DnsClientServerAddress -InterfaceAlias \"{adapter.Name.Replace("\"", "`\"")}\" -ServerAddresses @({serverArgs})";
+            string safeAlias = adapter.Name.Replace("'", "''");
+            string psScript = $"Set-DnsClientServerAddress -InterfaceAlias '{safeAlias}' -ServerAddresses @({serverArgs})";
             var psResult = await RunPowerShellAsync(psScript);
 
             bool success = psResult.Success;
@@ -380,7 +383,7 @@ namespace EasyDNS.Infrastructure.Services
             // 3. Fallback to netsh if WMI also failed
             if (!success)
             {
-                success = SetDnsViaNetsh(adapter.Name, servers);
+                success = SetDnsViaNetsh(adapter.Name, servers, primaryIpv6, secondaryIpv6);
             }
 
             if (success)
@@ -406,7 +409,8 @@ namespace EasyDNS.Infrastructure.Services
             }
 
             // 1. Try PowerShell ResetServerAddresses
-            string psScript = $"Set-DnsClientServerAddress -InterfaceAlias \"{adapter.Name.Replace("\"", "`\"")}\" -ResetServerAddresses";
+            string safeAlias = adapter.Name.Replace("'", "''");
+            string psScript = $"Set-DnsClientServerAddress -InterfaceAlias '{safeAlias}' -ResetServerAddresses";
             var psResult = await RunPowerShellAsync(psScript);
 
             bool success = psResult.Success;
@@ -434,43 +438,27 @@ namespace EasyDNS.Infrastructure.Services
 
         public async Task<OperationResult> FlushDnsCacheAsync()
         {
-            return await Task.Run(() =>
+            try
             {
-                try
-                {
-                    DnsFlushResolverCache();
-                }
-                catch
-                {
-                    // Ignore native call failure and rely on ipconfig
-                }
+                DnsFlushResolverCache();
+            }
+            catch
+            {
+                // Ignore native call failure and rely on ipconfig
+            }
 
-                try
-                {
-                    var psi = new ProcessStartInfo("ipconfig", "/flushdns")
-                    {
-                        CreateNoWindow = true,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true
-                    };
-
-                    using var process = Process.Start(psi);
-                    if (process != null)
-                    {
-                        string output = process.StandardOutput.ReadToEnd();
-                        process.WaitForExit(3000);
-                        string msg = string.IsNullOrWhiteSpace(output) ? "DNS Resolver Cache flushed successfully." : output.Trim();
-                        return OperationResult.Ok(msg);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    return OperationResult.Fail($"Failed to flush DNS cache: {ex.Message}");
-                }
-
-                return OperationResult.Ok("DNS Resolver Cache flushed.");
-            });
+            try
+            {
+                var (success, output) = await RunProcessAsync("ipconfig", "/flushdns", timeoutMs: 3000);
+                string msg = string.IsNullOrWhiteSpace(output)
+                    ? "DNS Resolver Cache flushed successfully."
+                    : output.Trim();
+                return success ? OperationResult.Ok(msg) : OperationResult.Fail(msg);
+            }
+            catch (Exception ex)
+            {
+                return OperationResult.Fail($"Failed to flush DNS cache: {ex.Message}");
+            }
         }
 
         private static bool SetDnsViaWmi(NetworkAdapterInfo adapter, List<string> servers)
@@ -535,7 +523,7 @@ namespace EasyDNS.Infrastructure.Services
             return false;
         }
 
-        private static bool SetDnsViaNetsh(string adapterName, List<string> servers)
+        private static bool SetDnsViaNetsh(string adapterName, List<string> servers, string? primaryIpv6 = null, string? secondaryIpv6 = null)
         {
             try
             {
@@ -549,6 +537,19 @@ namespace EasyDNS.Infrastructure.Services
                     string cmd2 = $"interface ipv4 add dns name=\"{safeName}\" address={servers[1]} index=2";
                     RunProcess("netsh", cmd2, out _, out _);
                 }
+
+                if (!string.IsNullOrWhiteSpace(primaryIpv6))
+                {
+                    string cmdV6_1 = $"interface ipv6 set dnsservers name=\"{safeName}\" source=static address={primaryIpv6.Trim()} register=primary";
+                    RunProcess("netsh", cmdV6_1, out _, out _);
+
+                    if (!string.IsNullOrWhiteSpace(secondaryIpv6))
+                    {
+                        string cmdV6_2 = $"interface ipv6 add dnsservers name=\"{safeName}\" address={secondaryIpv6.Trim()} index=2";
+                        RunProcess("netsh", cmdV6_2, out _, out _);
+                    }
+                }
+
                 return true;
             }
             catch
@@ -563,7 +564,12 @@ namespace EasyDNS.Infrastructure.Services
             {
                 string safeName = adapterName.Replace("\"", "\\\"");
                 string cmd = $"interface ipv4 set dns name=\"{safeName}\" source=dhcp";
-                return RunProcess("netsh", cmd, out _, out _);
+                bool ok = RunProcess("netsh", cmd, out _, out _);
+
+                string cmd6 = $"interface ipv6 set dnsservers name=\"{safeName}\" source=dhcp";
+                RunProcess("netsh", cmd6, out _, out _);
+
+                return ok;
             }
             catch
             {
@@ -600,38 +606,79 @@ namespace EasyDNS.Infrastructure.Services
             }
         }
 
-        private static async Task<(bool Success, string Output)> RunPowerShellAsync(string command)
+        internal static async Task<(bool Success, string Output)> RunProcessAsync(
+            string filename,
+            IEnumerable<string> arguments,
+            int timeoutMs = 5000,
+            CancellationToken ct = default)
         {
-            return await Task.Run(() =>
+            try
             {
+                var psi = new ProcessStartInfo(filename)
+                {
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+
+                foreach (var arg in arguments)
+                {
+                    psi.ArgumentList.Add(arg);
+                }
+
+                using var proc = new Process { StartInfo = psi };
+                if (!proc.Start())
+                {
+                    return (false, $"Could not start {filename}");
+                }
+
+                using var timeoutCts = new CancellationTokenSource(timeoutMs);
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
                 try
                 {
-                    var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -NonInteractive -Command \"{command}\"")
-                    {
-                        CreateNoWindow = true,
-                        UseShellExecute = false,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true
-                    };
+                    var stdoutTask = proc.StandardOutput.ReadToEndAsync(linkedCts.Token);
+                    var stderrTask = proc.StandardError.ReadToEndAsync(linkedCts.Token);
 
-                    using var proc = Process.Start(psi);
-                    if (proc == null) return (false, "Could not start powershell");
-                    string output = proc.StandardOutput.ReadToEnd();
-                    string error = proc.StandardError.ReadToEnd();
-                    proc.WaitForExit(5000);
-                    return (proc.ExitCode == 0, string.IsNullOrWhiteSpace(error) ? output : error);
+                    await proc.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
+
+                    string output = await stdoutTask.ConfigureAwait(false);
+                    string error = await stderrTask.ConfigureAwait(false);
+
+                    bool success = proc.ExitCode == 0;
+                    string result = success
+                        ? (string.IsNullOrWhiteSpace(output) ? error : output)
+                        : (string.IsNullOrWhiteSpace(error) ? output : error);
+                    return (success, result.Trim());
                 }
-                catch (Exception ex)
+                catch (OperationCanceledException)
                 {
-                    return (false, ex.Message);
+                    try
+                    {
+                        proc.Kill(entireProcessTree: true);
+                    }
+                    catch
+                    {
+                        // Ignore error if process already exited
+                    }
+
+                    string reason = timeoutCts.IsCancellationRequested ? "timed out" : "cancelled";
+                    return (false, $"Process '{filename}' {reason}.");
                 }
-            });
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.Message);
+            }
         }
 
-        private static bool RunProcess(string filename, string arguments, out string output, out string error)
+        internal static async Task<(bool Success, string Output)> RunProcessAsync(
+            string filename,
+            string arguments,
+            int timeoutMs = 5000,
+            CancellationToken ct = default)
         {
-            output = string.Empty;
-            error = string.Empty;
             try
             {
                 var psi = new ProcessStartInfo(filename, arguments)
@@ -642,15 +689,82 @@ namespace EasyDNS.Infrastructure.Services
                     RedirectStandardError = true
                 };
 
-                using var proc = Process.Start(psi);
-                if (proc == null) return false;
-                output = proc.StandardOutput.ReadToEnd();
-                error = proc.StandardError.ReadToEnd();
-                proc.WaitForExit(4000);
-                return proc.ExitCode == 0;
+                using var proc = new Process { StartInfo = psi };
+                if (!proc.Start())
+                {
+                    return (false, $"Could not start {filename}");
+                }
+
+                using var timeoutCts = new CancellationTokenSource(timeoutMs);
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+                try
+                {
+                    var stdoutTask = proc.StandardOutput.ReadToEndAsync(linkedCts.Token);
+                    var stderrTask = proc.StandardError.ReadToEndAsync(linkedCts.Token);
+
+                    await proc.WaitForExitAsync(linkedCts.Token).ConfigureAwait(false);
+
+                    string output = await stdoutTask.ConfigureAwait(false);
+                    string error = await stderrTask.ConfigureAwait(false);
+
+                    bool success = proc.ExitCode == 0;
+                    string result = success
+                        ? (string.IsNullOrWhiteSpace(output) ? error : output)
+                        : (string.IsNullOrWhiteSpace(error) ? output : error);
+                    return (success, result.Trim());
+                }
+                catch (OperationCanceledException)
+                {
+                    try
+                    {
+                        proc.Kill(entireProcessTree: true);
+                    }
+                    catch
+                    {
+                        // Ignore error if process already exited
+                    }
+
+                    string reason = timeoutCts.IsCancellationRequested ? "timed out" : "cancelled";
+                    return (false, $"Process '{filename}' {reason}.");
+                }
             }
             catch (Exception ex)
             {
+                return (false, ex.Message);
+            }
+        }
+
+        internal static async Task<(bool Success, string Output)> RunPowerShellAsync(
+            string command,
+            int timeoutMs = 5000,
+            CancellationToken ct = default)
+        {
+            // Suppress progress stream and encode as UTF-16LE Base64 (-EncodedCommand) to eliminate quoting/injection risks
+            string script = $"$ProgressPreference = 'SilentlyContinue'; {command}";
+            byte[] bytes = Encoding.Unicode.GetBytes(script);
+            string base64 = Convert.ToBase64String(bytes);
+
+            return await RunProcessAsync(
+                "powershell.exe",
+                new[] { "-NoProfile", "-NonInteractive", "-EncodedCommand", base64 },
+                timeoutMs,
+                ct).ConfigureAwait(false);
+        }
+
+        private static bool RunProcess(string filename, string arguments, out string output, out string error)
+        {
+            try
+            {
+                var task = RunProcessAsync(filename, arguments, timeoutMs: 4000);
+                var (success, result) = task.GetAwaiter().GetResult();
+                output = result;
+                error = success ? string.Empty : result;
+                return success;
+            }
+            catch (Exception ex)
+            {
+                output = string.Empty;
                 error = ex.Message;
                 return false;
             }

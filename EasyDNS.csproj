@@ -40,4 +40,8 @@
     <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="EasyDNS.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -40,5 +40,32 @@ namespace EasyDNS.Tests
             var info = new Core.Models.NetworkAdapterInfo();
             info.IsDnsAutomatic.Should().BeTrue();
         }
+
+        [Fact]
+        public async System.Threading.Tasks.Task RunPowerShellAsync_ValidCommand_ReturnsOutput()
+        {
+            var (success, output) = await WindowsIpHelperDnsService.RunPowerShellAsync("Write-Output 'Hello EasyDNS'");
+            success.Should().BeTrue();
+            output.Trim().Should().Be("Hello EasyDNS");
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task RunPowerShellAsync_CommandWithSpecialCharacters_ExecutesSafely()
+        {
+            // Testing special characters like $, `, quotes and parentheses that broke the unescaped interpolation
+            string text = "Adapter (Special $Var `Test)";
+            var (success, output) = await WindowsIpHelperDnsService.RunPowerShellAsync($"Write-Output '{text.Replace("'", "''")}'");
+            success.Should().BeTrue();
+            output.Trim().Should().Be(text);
+        }
+
+        [Fact]
+        public async System.Threading.Tasks.Task RunProcessAsync_OnTimeout_KillsProcessAndReturnsFailure()
+        {
+            // Start a powershell sleep that exceeds timeout
+            var (success, output) = await WindowsIpHelperDnsService.RunProcessAsync("powershell.exe", new[] { "-NoProfile", "-Command", "Start-Sleep -Seconds 10" }, timeoutMs: 500);
+            success.Should().BeFalse();
+            output.Should().Contain("timed out");
+        }
     }
 }
