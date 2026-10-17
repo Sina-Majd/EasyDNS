@@ -39,12 +39,12 @@ namespace EasyDNS.Infrastructure.Services
                 return null;
             }
 
+            using var timeoutCts = new CancellationTokenSource(timeoutMs);
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
             try
             {
                 using var udpClient = new UdpClient(ip.AddressFamily);
-                udpClient.Client.SendTimeout = timeoutMs;
-                udpClient.Client.ReceiveTimeout = timeoutMs;
-
                 var endPoint = new IPEndPoint(ip, 53);
                 udpClient.Connect(endPoint);
 
@@ -54,22 +54,15 @@ namespace EasyDNS.Infrastructure.Services
                 query[1] = (byte)(txId & 0xFF);
 
                 var sw = Stopwatch.StartNew();
-                await udpClient.SendAsync(query.AsMemory(), ct);
+                await udpClient.SendAsync(query.AsMemory(), linkedCts.Token).ConfigureAwait(false);
 
-                var receiveTask = udpClient.ReceiveAsync(ct).AsTask();
-                var timeoutTask = Task.Delay(timeoutMs, ct);
-
-                var completed = await Task.WhenAny(receiveTask, timeoutTask);
+                var result = await udpClient.ReceiveAsync(linkedCts.Token).ConfigureAwait(false);
                 sw.Stop();
 
-                if (completed == receiveTask && !receiveTask.IsFaulted && !receiveTask.IsCanceled)
+                if (result.Buffer.Length >= 12 && result.Buffer[0] == query[0] && result.Buffer[1] == query[1])
                 {
-                    var result = receiveTask.Result;
-                    if (result.Buffer.Length >= 12 && result.Buffer[0] == query[0] && result.Buffer[1] == query[1])
-                    {
-                        long rtt = Math.Max(1, sw.ElapsedMilliseconds);
-                        return new LatencyResult(ipOrHost, rtt, true, "OK", "DNS");
-                    }
+                    long rtt = Math.Max(1, sw.ElapsedMilliseconds);
+                    return new LatencyResult(ipOrHost, rtt, true, "OK", "DNS");
                 }
             }
             catch
@@ -82,7 +75,7 @@ namespace EasyDNS.Infrastructure.Services
 
         public async Task<LatencyResult> MeasureLatencyAsync(string ipOrHost, int timeoutMs = DefaultTimeoutMs, CancellationToken ct = default)
         {
-            if (string.IsNullOrWhiteSpace(ipOrHost) || !IPAddress.TryParse(ipOrHost.Trim(), out _))
+            if (string.IsNullOrWhiteSpace(ipOrHost) || !IPAddress.TryParse(ipOrHost.Trim(), out var ipAddress))
             {
                 return new LatencyResult(ipOrHost, -1, false, "Invalid IP", "None");
             }
@@ -108,13 +101,20 @@ namespace EasyDNS.Infrastructure.Services
             try
             {
                 using var pinger = new Ping();
-                var reply = await pinger.SendPingAsync(ipOrHost.Trim(), timeoutMs);
+                using var timeoutCts = new CancellationTokenSource(timeoutMs);
+                using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
+
+                var reply = await pinger.SendPingAsync(ipAddress, TimeSpan.FromMilliseconds(timeoutMs), cancellationToken: linkedCts.Token);
                 if (reply.Status == IPStatus.Success)
                 {
                     return new LatencyResult(ipOrHost, reply.RoundtripTime, true, "OK", "ICMP");
                 }
 
                 return new LatencyResult(ipOrHost, -1, false, reply.Status.ToString(), "ICMP");
+            }
+            catch (OperationCanceledException)
+            {
+                return new LatencyResult(ipOrHost, -1, false, "Cancelled", "None");
             }
             catch (Exception ex)
             {

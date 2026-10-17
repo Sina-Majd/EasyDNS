@@ -43,5 +43,21 @@ namespace EasyDNS.Tests
 
             testedCount.Should().Be(0);
         }
+
+        [Fact]
+        public async Task MeasureLatencyAsync_WithCancelledToken_ReturnsCancelledResultImmediately()
+        {
+            var service = new LatencyBenchmarkService();
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var result = await service.MeasureLatencyAsync("8.8.8.8", timeoutMs: 3000, ct: cts.Token);
+            sw.Stop();
+
+            result.Success.Should().BeFalse();
+            result.StatusMessage.Should().Be("Cancelled");
+            sw.ElapsedMilliseconds.Should().BeLessThan(500); // Should return immediately, not wait for timeout
+        }
     }
 }
